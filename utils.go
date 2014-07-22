@@ -562,7 +562,13 @@ func typeFromForm(form string, htype HDUType) (Type, error) {
 		case 'A':
 			elemsz = repeat
 			repeat = 1
-		case 'L', 'B', 'X':
+		case 'X':
+			elemsz = 1
+			const nbits = 8
+			sz := repeat + (nbits-(repeat%nbits))%nbits
+			repeat = sz / nbits
+
+		case 'L', 'B':
 			elemsz = 1
 		case 'I':
 			elemsz = 2
