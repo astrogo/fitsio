@@ -69,11 +69,11 @@ func (col *Column) readBin(table *Table, icol int, irow int64, ptr interface{}) 
 			var offset int32
 			err = bdec.Decode(&n)
 			if err != nil {
-				return fmt.Errorf("**error** heap-size val=%#v (%T) %v\n", ptr, ptr, err)
+				return fmt.Errorf("fitsio: problem decoding slice 32b-length: %v\n", err)
 			}
 			err = bdec.Decode(&offset)
 			if err != nil {
-				return fmt.Errorf("**error** heap-offset val=%#v (%T) %v\n", ptr, ptr, err)
+				return fmt.Errorf("fitsio: problem decoding slice 32b-offset: %v\n", err)
 			}
 			beg = int(offset)
 			end = beg + int(n)*int(col.dtype.gotype.Elem().Size())
@@ -84,11 +84,11 @@ func (col *Column) readBin(table *Table, icol int, irow int64, ptr interface{}) 
 			var offset int64
 			err = bdec.Decode(&n)
 			if err != nil {
-				return fmt.Errorf("**error** heap-size val=%#v (%T) %v\n", ptr, ptr, err)
+				return fmt.Errorf("fitsio: problem decoding slice 64b-length: %v\n", err)
 			}
 			err = bdec.Decode(&offset)
 			if err != nil {
-				return fmt.Errorf("**error** heap-offset val=%#v (%T) %v\n", ptr, ptr, err)
+				return fmt.Errorf("fitsio: problem decoding slice 64b-offset: %v\n", err)
 			}
 			beg = int(offset)
 			end = beg + int(n)*int(col.dtype.gotype.Elem().Size())
@@ -109,7 +109,7 @@ func (col *Column) readBin(table *Table, icol int, irow int64, ptr interface{}) 
 			slice = reflect.Append(slice, vv.Elem())
 		}
 		if err != nil {
-			return fmt.Errorf("**error** val=%#v (%T) %v\n", ptr, ptr, err)
+			return fmt.Errorf("fitsio: %v\n", err)
 		}
 		rv := reflect.ValueOf(ptr)
 		rv.Elem().Set(slice)
@@ -125,7 +125,7 @@ func (col *Column) readBin(table *Table, icol int, irow int64, ptr interface{}) 
 
 		err = bdec.Decode(ptr)
 		if err != nil {
-			return fmt.Errorf("**error** val=%#v (%T) %v\n", ptr, ptr, err)
+			return fmt.Errorf("fitsio: %v\n", err)
 		}
 
 	case reflect.Bool,
@@ -145,7 +145,7 @@ func (col *Column) readBin(table *Table, icol int, irow int64, ptr interface{}) 
 		bdec.Order = binary.BigEndian
 		err = bdec.Decode(ptr)
 		if err != nil {
-			return fmt.Errorf("**error** val=%#v (%T) %v\n", ptr, ptr, err)
+			return fmt.Errorf("fitsio: %v\n", err)
 		}
 
 	case reflect.String:
@@ -200,14 +200,14 @@ func (col *Column) writeBin(table *Table, icol int, irow int64, ptr interface{})
 			data := [2]int32{int32(nmax), int32(len(table.heap))}
 			err = benc.Encode(&data)
 			if err != nil {
-				return fmt.Errorf("**error** heap-size/offset val=%#v (%T) %v\n", ptr, ptr, err)
+				return fmt.Errorf("fitsio: problem encoding slice 32b-descriptor: %v\n", err)
 			}
 
 		case 16:
 			data := [2]int64{int64(nmax), int64(len(table.heap))}
 			err = benc.Encode(&data)
 			if err != nil {
-				return fmt.Errorf("**error** heap-size/offset val=%#v (%T) %v\n", ptr, ptr, err)
+				return fmt.Errorf("fitsio: problem encoding slice 64b-descriptor: %v\n", err)
 			}
 		}
 
@@ -240,7 +240,7 @@ func (col *Column) writeBin(table *Table, icol int, irow int64, ptr interface{})
 		benc.Order = binary.BigEndian
 		err = benc.Encode(ptr)
 		if err != nil {
-			return fmt.Errorf("**error** val=%#v (%T) %v\n", ptr, ptr, err)
+			return fmt.Errorf("fitsio: %v\n", err)
 		}
 
 	case reflect.Bool,
@@ -294,7 +294,7 @@ func (col *Column) writeBin(table *Table, icol int, irow int64, ptr interface{})
 		_, err = buf.Write(data[:n])
 
 		if err != nil {
-			return fmt.Errorf("**error** val=%#v (%T) %v\n", ptr, ptr, err)
+			return fmt.Errorf("fitsio: %v\n", err)
 		}
 
 	default:
