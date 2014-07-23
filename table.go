@@ -535,16 +535,65 @@ func CopyTableRange(dst, src *Table, beg, end int64) error {
 		return fmt.Errorf("fitsio: src pointer is nil")
 	}
 
+	vla := false
+	for _, col := range src.Cols() {
+		if col.dtype.tc < 0 {
+			vla = true
+			break
+		}
+	}
+
 	// FIXME(sbinet)
 	// need to also handle VLAs
 	// src.heap -> dst.heap
 	// convert offsets into dst.heap
+	//
+	// for the time being: go the slow way
+	switch vla {
 
-	for irow := beg; irow < end; irow++ {
-		pstart := src.rowsz * int(irow)
-		pend := pstart + src.rowsz
-		row := src.data[pstart:pend]
-		dst.data = append(dst.data, row...)
+	case true:
+		rows, err := src.Read(beg, end)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		ncols := len(src.Cols())
+		data := make([]interface{}, ncols)
+		for i := range src.Cols() {
+			col := &src.cols[i]
+			rt := col.dtype.gotype
+			rv := reflect.New(rt)
+			xx := rv.Interface()
+			data[i] = xx
+		}
+		for rows.Next() {
+			err = rows.Scan(data...)
+			if err != nil {
+				return err
+			}
+			err = dst.Write(data...)
+			if err != nil {
+				return err
+			}
+		}
+		err = rows.Err()
+		if err != nil {
+			return err
+		}
+
+		return err
+
+	case false:
+		for irow := beg; irow < end; irow++ {
+			pstart := src.rowsz * int(irow)
+			pend := pstart + src.rowsz
+			row := src.data[pstart:pend]
+			dst.data = append(dst.data, row...)
+		}
+		nrows := end - beg
+		dst.nrows += nrows
+		dst.hdr.Axes()[1] += int(nrows)
 	}
 
 	return err
