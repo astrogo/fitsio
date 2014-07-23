@@ -585,13 +585,15 @@ func CopyTableRange(dst, src *Table, beg, end int64) error {
 		return err
 
 	case false:
+		nrows := end - beg
+		// reserve enough capacity for the new rows
+		dst.data = dst.data[:len(dst.data) : len(dst.data)+int(nrows)*src.rowsz]
 		for irow := beg; irow < end; irow++ {
 			pstart := src.rowsz * int(irow)
 			pend := pstart + src.rowsz
 			row := src.data[pstart:pend]
 			dst.data = append(dst.data, row...)
 		}
-		nrows := end - beg
 		dst.nrows += nrows
 		dst.hdr.Axes()[1] += int(nrows)
 	}
