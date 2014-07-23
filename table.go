@@ -455,62 +455,66 @@ func (t *Table) freeze() error {
 	nrows := t.nrows
 	t.hdr.axes[1] = int(nrows)
 
-	hduext := ""
-	if t.binary {
-		hduext = "BINTABLE"
-	} else {
-		hduext = "TABLE   "
-	}
-	cards := []Card{
-		{
-			Name:    "XTENSION",
-			Value:   hduext,
-			Comment: "table extension",
-		},
-		{
-			Name:    "BITPIX",
-			Value:   t.Header().Bitpix(),
-			Comment: "number of bits per data pixel",
-		},
-		{
-			Name:    "NAXIS",
-			Value:   len(t.Header().Axes()),
-			Comment: "number of data axes",
-		},
-		{
-			Name:    "NAXIS1",
-			Value:   t.Header().Axes()[0],
-			Comment: "length of data axis 1",
-		},
-		{
-			Name:    "NAXIS2",
-			Value:   t.Header().Axes()[1],
-			Comment: "length of data axis 2",
-		},
-		{
-			Name:    "PCOUNT",
-			Value:   len(t.heap),
-			Comment: "heap area size (bytes)",
-		},
-		{
-			Name:    "GCOUNT",
-			Value:   1,
-			Comment: "one data group",
-		},
+	if card := t.Header().Get("XTENSION"); card == nil {
+		hduext := ""
+		if t.binary {
+			hduext = "BINTABLE"
+		} else {
+			hduext = "TABLE   "
+		}
+		cards := []Card{
+			{
+				Name:    "XTENSION",
+				Value:   hduext,
+				Comment: "table extension",
+			},
+			{
+				Name:    "BITPIX",
+				Value:   t.Header().Bitpix(),
+				Comment: "number of bits per data pixel",
+			},
+			{
+				Name:    "NAXIS",
+				Value:   len(t.Header().Axes()),
+				Comment: "number of data axes",
+			},
+			{
+				Name:    "NAXIS1",
+				Value:   t.Header().Axes()[0],
+				Comment: "length of data axis 1",
+			},
+			{
+				Name:    "NAXIS2",
+				Value:   t.Header().Axes()[1],
+				Comment: "length of data axis 2",
+			},
+			{
+				Name:    "PCOUNT",
+				Value:   len(t.heap),
+				Comment: "heap area size (bytes)",
+			},
+			{
+				Name:    "GCOUNT",
+				Value:   1,
+				Comment: "one data group",
+			},
+		}
+
+		err = t.hdr.prepend(cards...)
+		if err != nil {
+			return err
+		}
 	}
 
-	err = t.hdr.prepend(cards...)
-	if err != nil {
-		return err
+	if card := t.Header().Get("THEAP"); card == nil {
+		err = t.hdr.Append([]Card{
+			{
+				Name:    "THEAP",
+				Value:   0,
+				Comment: "gap size (bytes)",
+			},
+		}...)
 	}
-
-	err = t.hdr.Append([]Card{
-		{
-			Name:    "THEAP",
-			Value:   0,
-			Comment: "gap size (bytes)",
-		},
-	}...)
 
 	return err
 }
