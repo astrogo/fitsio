@@ -14,6 +14,8 @@ type Image interface {
 	Read(ptr interface{}) error
 	Write(ptr interface{}) error
 	Raw() []byte
+
+	freeze() error
 }
 
 // imageHDU is a Header-Data Unit extension holding an image as data payload
@@ -353,5 +355,25 @@ func (img *imageHDU) Write(data interface{}) error {
 	}
 
 	//img.raw = buf.Bytes()
+	return err
+}
+
+// freeze freezes an Image before writing, finalizing header values.
+func (img *imageHDU) freeze() error {
+	var err error
+	card := img.Header().Get("XTENSION")
+	if card != nil {
+		return err
+	}
+
+	err = img.Header().prepend(Card{
+		Name:    "XTENSION",
+		Value:   "IMAGE   ",
+		Comment: "IMAGE extension",
+	})
+	if err != nil {
+		return err
+	}
+
 	return err
 }

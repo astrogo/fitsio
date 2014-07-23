@@ -185,11 +185,8 @@ func (f *File) Write(hdu HDU) error {
 	} else {
 		switch hdu.Type() {
 		case IMAGE_HDU:
-			err = hdu.Header().prepend(Card{
-				Name:    "XTENSION",
-				Value:   "IMAGE   ",
-				Comment: "IMAGE extension",
-			})
+			img := hdu.(Image)
+			err = img.freeze()
 			if err != nil {
 				return err
 			}
