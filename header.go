@@ -163,7 +163,7 @@ func (hdr *Header) Append(cards ...Card) error {
 			case "END":
 				continue
 			default:
-				return fmt.Errorf("fitsio: duplicate Card [%s]", card.Name)
+				return fmt.Errorf("fitsio: duplicate Card [%s] (value=%v)", card.Name, card.Value)
 			}
 			continue
 		}
@@ -215,7 +215,7 @@ func (hdr *Header) prepend(cards ...Card) error {
 			case "END":
 				continue
 			default:
-				return fmt.Errorf("fitsio: duplicate Card [%s]", card.Name)
+				return fmt.Errorf("fitsio: duplicate Card [%s] (value=%v)", card.Name, card.Value)
 			}
 			continue
 		}
