@@ -37,3 +37,12 @@ type HDU interface {
 	Version() int
 	Header() *Header
 }
+
+// CopyHDU copies the i-th HDU from the src FITS file into the dst one.
+func CopyHDU(dst, src *File, i int) error {
+	// FIXME(sbinet)
+	// use a more efficient implementation. directly copying raw-bytes
+	// instead of decoding/re-encoding them.
+	hdu := src.HDU(i)
+	return dst.Write(hdu)
+}
