@@ -98,7 +98,13 @@ Merge FITS tables into a single file/table.
 		if err != nil {
 			panic(err)
 		}
+
 	}
+	err = out.Write(table)
+	if err != nil {
+		panic(err)
+	}
+
 	fmt.Printf("::: merging [%d] FITS files... [done]\n", len(infiles))
 	fmt.Printf("::: nrows: %d\n", table.NumRows())
 }

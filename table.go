@@ -534,15 +534,14 @@ func CopyTableRange(dst, src *Table, beg, end int64) error {
 		return fmt.Errorf("fitsio: src pointer is nil")
 	}
 
-	if len(src.heap) > 0 {
-		return fmt.Errorf("fitsio: copy table with variable length arrays - not supported")
-	}
-
-	rowsz := src.rowsz
+	// FIXME(sbinet)
+	// need to also handle VLAs
+	// src.heap -> dst.heap
+	// convert offsets into dst.heap
 
 	for irow := beg; irow < end; irow++ {
-		pstart := rowsz * int(irow)
-		pend := pstart + rowsz
+		pstart := src.rowsz * int(irow)
+		pend := pstart + src.rowsz
 		row := src.data[pstart:pend]
 		dst.data = append(dst.data, row...)
 	}
