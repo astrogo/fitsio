@@ -242,12 +242,21 @@ func NewTable(name string, cols []Column, hdutype HDUType) (*Table, error) {
 			},
 		)
 
-		cards = append(cards,
-			Card{
-				Name:  fmt.Sprintf("TBCOL%d", i+1),
-				Value: offset - col.dtype.dsize*col.dtype.len + 1,
-			},
-		)
+		if col.Start != 0 {
+			cards = append(cards,
+				Card{
+					Name:  fmt.Sprintf("TBCOL%d", i+1),
+					Value: int(col.Start),
+				},
+			)
+		} else {
+			cards = append(cards,
+				Card{
+					Name:  fmt.Sprintf("TBCOL%d", i+1),
+					Value: offset - col.dtype.dsize*col.dtype.len + 1,
+				},
+			)
+		}
 
 		if col.Display != "" {
 			cards = append(cards,
@@ -276,14 +285,6 @@ func NewTable(name string, cols []Column, hdutype HDUType) (*Table, error) {
 			)
 		}
 
-		if col.Start != 0 {
-			cards = append(cards,
-				Card{
-					Name:  fmt.Sprintf("TBCOL%d", i+1),
-					Value: int(col.Start),
-				},
-			)
-		}
 	}
 
 	cards = append(
