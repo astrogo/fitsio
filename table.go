@@ -518,3 +518,34 @@ func (t *Table) freeze() error {
 
 	return err
 }
+
+// CopyTable copies all the rows from src into dst.
+func CopyTable(dst, src *Table) error {
+	return CopyTableRange(dst, src, 0, src.NumRows())
+}
+
+// CopyTableRange copies the rows interval [beg,end) from src into dst
+func CopyTableRange(dst, src *Table, beg, end int64) error {
+	var err error
+	if dst == nil {
+		return fmt.Errorf("fitsio: dst pointer is nil")
+	}
+	if src == nil {
+		return fmt.Errorf("fitsio: src pointer is nil")
+	}
+
+	if len(src.heap) > 0 {
+		return fmt.Errorf("fitsio: copy table with variable length arrays - not supported")
+	}
+
+	rowsz := src.rowsz
+
+	for irow := beg; irow < end; irow++ {
+		pstart := rowsz * int(irow)
+		pend := pstart + rowsz
+		row := src.data[pstart:pend]
+		dst.data = append(dst.data, row...)
+	}
+
+	return err
+}
