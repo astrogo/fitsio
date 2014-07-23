@@ -92,3 +92,8 @@ func dumpFitsTable(fname string) {
 - ``[DONE]`` add support for writing tables from maps
 - ``[DONE]`` add support for variable length array
 - provide benchmarks _wrt_ ``CFITSIO``
+- add support for `TUNITn`
+- add support for `TSCALn`
+- add suport for `TDIMn`
+- add support for (fast, low-level) copy of `FITS` tables
+
