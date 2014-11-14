@@ -2,6 +2,7 @@ package fitsio
 
 import (
 	"fmt"
+	"math/big"
 	"reflect"
 )
 
@@ -182,10 +183,20 @@ func (hdr *Header) Append(cards ...Card) error {
 				card.Value = card.Value.(string)
 			case reflect.Bool:
 				card.Value = card.Value.(bool)
+			case reflect.Struct:
+				switch card.Value.(type) {
+				case big.Int:
+					// ok
+				default:
+					return fmt.Errorf(
+						"fitsio: invalid value type (%T) for card [%s] (kind=%v)",
+						card.Value, card.Name, rv.Type().Kind(),
+					)
+				}
 			default:
 				return fmt.Errorf(
-					"fitsio: invalid value type (%T) for card [%s]",
-					card.Value, card.Name,
+					"fitsio: invalid value type (%T) for card [%s] (kind=%v)",
+					card.Value, card.Name, rv.Type().Kind(),
 				)
 			}
 		}
