@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math/big"
 	"reflect"
 	"strconv"
 	"strings"
@@ -231,9 +232,23 @@ func parseHeaderLine(bline []byte) (*Card, error) {
 			} else {
 				x, err := strconv.ParseInt(value, 10, 64)
 				if err != nil {
-					return nil, err
+					switch err := err.(type) {
+					case *strconv.NumError:
+						// try math/big.Int
+						if err.Err == strconv.ErrRange {
+							var x big.Int
+							_, err := fmt.Sscanf(value, "%v", &x)
+							if err != nil {
+								return nil, err
+							}
+							card.Value = x
+						}
+					default:
+						return nil, err
+					}
+				} else {
+					card.Value = int(x)
 				}
-				card.Value = int(x)
 			}
 		} else if v0 == 'T' {
 			card.Value = true
@@ -425,6 +440,12 @@ func makeHeaderLine(card *Card) ([]byte, error) {
 
 		case complex128:
 			n, err = fmt.Fprintf(buf, "(%10f,%10f)", real(v), imag(v))
+			if err != nil {
+				return nil, fmt.Errorf("fitsio: error writing card value [%s]: %v", card.Name, err)
+			}
+
+		case big.Int:
+			n, err = fmt.Fprintf(buf, "%s", v.String())
 			if err != nil {
 				return nil, fmt.Errorf("fitsio: error writing card value [%s]: %v", card.Name, err)
 			}

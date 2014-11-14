@@ -3,10 +3,20 @@ package fitsio
 import (
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"os"
 	"reflect"
 	"testing"
 )
+
+func newBigInt(t *testing.T) big.Int {
+	var i big.Int
+	_, err := fmt.Sscanf("40002100000000422948", "%v", &i)
+	if err != nil {
+		t.Fatalf("error creating a big.Int: %v\n", err)
+	}
+	return i
+}
 
 func TestHeaderRW(t *testing.T) {
 	curdir, err := os.Getwd()
@@ -117,6 +127,11 @@ func TestHeaderRW(t *testing.T) {
 				complex(float64(42), float64(66)),
 				"a complex128",
 			},
+			{
+				"card_bigint",
+				newBigInt(t),
+				"a big int",
+			},
 		},
 		bitpix: 8,
 		axes:   []int{},
@@ -201,6 +216,11 @@ func TestHeaderRW(t *testing.T) {
 					val = ref.Value.(string)
 				case reflect.Bool:
 					val = ref.Value.(bool)
+				case reflect.Struct:
+					switch ref.Value.(type) {
+					case big.Int:
+						val = ref.Value.(big.Int)
+					}
 				}
 				if !reflect.DeepEqual(card.Value, val) {
 					t.Fatalf(
@@ -293,6 +313,11 @@ func TestHeaderRW(t *testing.T) {
 					val = ref.Value.(string)
 				case reflect.Bool:
 					val = ref.Value.(bool)
+				case reflect.Struct:
+					switch ref.Value.(type) {
+					case big.Int:
+						val = ref.Value.(big.Int)
+					}
 				}
 				if !reflect.DeepEqual(card.Value, val) {
 					t.Fatalf(
