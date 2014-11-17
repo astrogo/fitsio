@@ -634,7 +634,9 @@ func typeFromForm(form string, htype HDUType) (Type, error) {
 		}
 
 		if typ.dsize*typ.len == 0 {
-			return typ, fmt.Errorf("fitsio: invalid dtype! form=%q typ=%#v\n", form, typ)
+			if form != "0A" {
+				return typ, fmt.Errorf("fitsio: invalid dtype! form=%q typ=%#v\n", form, typ)
+			}
 		}
 
 	case ASCII_TBL:
@@ -691,7 +693,9 @@ func typeFromForm(form string, htype HDUType) (Type, error) {
 		// fmt.Printf(">>> %#v (%v)\n", typ, typ.gotype.Name())
 
 		if typ.dsize*typ.len == 0 {
-			return typ, fmt.Errorf("fitsio: invalid dtype! form=%q typ=%#v\n", form, typ)
+			if form != "0A" {
+				return typ, fmt.Errorf("fitsio: invalid dtype! form=%q typ=%#v\n", form, typ)
+			}
 		}
 	}
 
