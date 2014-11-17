@@ -229,13 +229,13 @@ func (dec *streamDecoder) loadTable(hdr *Header, htype HDUType) (*Table, error) 
 	rowsz := hdr.Axes()[0]
 	nrows := int64(hdr.Axes()[1])
 	ncols := 0
-	if card := hdr.Get("TFIELDS"); card != nil {
+	if card := hdr.Get("TFIELDS"); card != nil && card.Value != nil {
 		ncols = card.Value.(int)
 	}
 
 	datasz := int(nrows) * rowsz
 	heapsz := 0
-	if card := hdr.Get("PCOUNT"); card != nil {
+	if card := hdr.Get("PCOUNT"); card != nil && card.Value != nil {
 		heapsz = card.Value.(int)
 	}
 
@@ -251,7 +251,7 @@ func (dec *streamDecoder) loadTable(hdr *Header, htype HDUType) (*Table, error) 
 	}
 
 	gapsz := 0
-	if card := hdr.Get("THEAP"); card != nil {
+	if card := hdr.Get("THEAP"); card != nil && card.Value != nil {
 		gapsz = card.Value.(int)
 	}
 
@@ -293,17 +293,17 @@ func (dec *streamDecoder) loadTable(hdr *Header, htype HDUType) (*Table, error) 
 		}
 
 		card = get("TUNIT", i)
-		if card != nil {
+		if card != nil && card.Value != nil {
 			col.Unit = card.Value.(string)
 		}
 
 		card = get("TNULL", i)
-		if card != nil {
+		if card != nil && card.Value != nil {
 			col.Null = fmt.Sprintf("%v", card.Value)
 		}
 
 		card = get("TSCAL", i)
-		if card != nil {
+		if card != nil && card.Value != nil {
 			switch vv := card.Value.(type) {
 			case float64:
 				col.Bscale = vv
@@ -319,7 +319,7 @@ func (dec *streamDecoder) loadTable(hdr *Header, htype HDUType) (*Table, error) 
 		}
 
 		card = get("TZERO", i)
-		if card != nil {
+		if card != nil && card.Value != nil {
 			switch vv := card.Value.(type) {
 			case float64:
 				col.Bzero = vv
@@ -335,12 +335,12 @@ func (dec *streamDecoder) loadTable(hdr *Header, htype HDUType) (*Table, error) 
 		}
 
 		card = get("TDISP", i)
-		if card != nil {
+		if card != nil && card.Value != nil {
 			col.Display = card.Value.(string)
 		}
 
 		card = get("TDIM", i)
-		if card != nil {
+		if card != nil && card.Value != nil {
 			dims := card.Value.(string)
 			dims = strings.Replace(dims, "(", "", -1)
 			dims = strings.Replace(dims, ")", "", -1)
@@ -363,7 +363,7 @@ func (dec *streamDecoder) loadTable(hdr *Header, htype HDUType) (*Table, error) 
 		}
 
 		card = get("TBCOL", i)
-		if card != nil {
+		if card != nil && card.Value != nil {
 			col.Start = int64(card.Value.(int))
 		}
 
