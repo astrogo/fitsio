@@ -620,7 +620,7 @@ func typeFromForm(form string, htype HDUType) (Type, error) {
 					len:    repeat,
 					dsize:  dsize,
 					hsize:  hsize,
-					gotype: arrayOf(rt, repeat),
+					gotype: reflect.ArrayOf(repeat, rt),
 				}
 			} else {
 				typ = Type{
@@ -770,17 +770,6 @@ func formFromGoType(rt reflect.Type, htype HDUType) string {
 	}
 
 	return hdr + form
-}
-
-// arrayOf return a reflect.Type of kind reflect.Array with elements of type rt
-// FIXME: replace with reflect.ArrayOf when available
-func arrayOf(rt reflect.Type, len int) reflect.Type {
-	tname := fmt.Sprintf("[%d]%s", len, rt.Name())
-	typ, ok := g_arrayTypes[tname]
-	if !ok {
-		panic(fmt.Errorf("fitsio: [%d]%s not available", len, rt.Name()))
-	}
-	return typ
 }
 
 var g_gotype2FITS = map[reflect.Kind]map[HDUType]string{
