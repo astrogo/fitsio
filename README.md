@@ -1,7 +1,7 @@
 fitsio
 ======
 
-[![Build Status](https://drone.io/github.com/astrogo/fitsio/status.png)](https://drone.io/github.com/astrogo/fitsio/latest)
+[![Build Status](https://travis-ci.org/astrogo/fitsio.svg?branch=master)](https://travis-ci.org/astrogo/fitsio)
 
 `fitsio` is a pure-Go package to read and write `FITS` files.
 
