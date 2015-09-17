@@ -1,0 +1,20 @@
+language: go
+
+go:
+  - 1.4.2
+  - 1.5.1
+  - tip
+
+sudo: false
+
+script:
+    - go get -v ./...
+    - go test -v ./...
+
+notifications:
+  email:
+    recipients:
+      - binet@cern.ch
+    on_success: change
+    on_failure: always
+
