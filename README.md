@@ -16,6 +16,12 @@ $ go get github.com/astrogo/fitsio
 
 http://godoc.org/github.com/astrogo/fitsio
 
+## Contribute
+
+`astrogo/fitsio` is released under `BSD-3`.
+Please send a pull request to [astrogo/license](https://github.com/astrogo/license),
+adding yourself to the `AUTHORS` and/or `CONTRIBUTORS` file.
+
 ## Example
 
 ```go
