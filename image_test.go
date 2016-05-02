@@ -6,7 +6,11 @@ package fitsio
 
 import (
 	"fmt"
+	"image"
+	"image/color"
+	"image/draw"
 	"io/ioutil"
+	"math"
 	"os"
 	"reflect"
 	"testing"
@@ -361,4 +365,210 @@ func TestImageRW(t *testing.T) {
 	}
 }
 
-// EOF
+func TestImageImage(t *testing.T) {
+	const (
+		w = 20
+		h = 20
+	)
+	var (
+		rect = image.Rect(0, 0, w, h)
+	)
+	set := func(img draw.Image) {
+		img.Set(0, 0, color.RGBA{255, 0, 0, 255})
+		img.Set(10, 10, color.RGBA{0, 255, 0, 255})
+		img.Set(15, 15, color.RGBA{0, 0, 255, 255})
+	}
+
+	for i, test := range []struct {
+		want   image.Image
+		bitpix int
+	}{
+		{
+			want: func() image.Image {
+				img := image.NewGray(rect)
+				set(img)
+				return img
+			}(),
+			bitpix: 8,
+		},
+		{
+			want: func() image.Image {
+				img := image.NewGray16(rect)
+				set(img)
+				return img
+			}(),
+			bitpix: 16,
+		},
+		{
+			want: func() image.Image {
+				img := image.NewRGBA(rect)
+				set(img)
+				return img
+			}(),
+			bitpix: 32,
+		},
+		{
+			want: func() image.Image {
+				img := image.NewRGBA64(rect)
+				set(img)
+				return img
+			}(),
+			bitpix: 64,
+		},
+		{
+			want: func() image.Image {
+				pix := image.NewRGBA(rect)
+				set(pix)
+				img := newF32Image(rect, pix.Pix)
+				return img
+			}(),
+			bitpix: -32,
+		},
+		{
+			want: func() image.Image {
+				pix := image.NewRGBA64(rect)
+				set(pix)
+				img := newF64Image(rect, pix.Pix)
+				return img
+			}(),
+			bitpix: -64,
+		},
+	} {
+		hdu := NewImage(test.bitpix, []int{w, h})
+		switch test.bitpix {
+		case 8:
+			img := test.want.(*image.Gray)
+			err := hdu.Write(&img.Pix)
+			if err != nil {
+				t.Errorf("image #%d: error writing raw pixels: %v\n", i, err)
+				continue
+			}
+		case 16:
+			img := test.want.(*image.Gray16)
+			pix := make([]int16, len(img.Pix)/2)
+			for i := 0; i < len(img.Pix); i += 2 {
+				buf := img.Pix[i : i+2]
+				pix[i/2] = int16(uint16(buf[1]) | uint16(buf[0])<<8)
+			}
+			err := hdu.Write(&pix)
+			if err != nil {
+				t.Errorf("image #%d: error writing raw pixels: %v\n", i, err)
+				continue
+			}
+		case 32:
+			img := test.want.(*image.RGBA)
+			pix := make([]int32, len(img.Pix)/4)
+			for i := 0; i < len(img.Pix); i += 4 {
+				buf := img.Pix[i : i+4]
+				pix[i/4] = int32(uint32(buf[3]) | uint32(buf[2])<<8 | uint32(buf[1])<<16 | uint32(buf[0])<<24)
+			}
+			err := hdu.Write(&pix)
+			if err != nil {
+				t.Errorf("image #%d: error writing raw pixels: %v\n", i, err)
+				continue
+			}
+		case 64:
+			img := test.want.(*image.RGBA64)
+			pix := make([]int64, len(img.Pix)/8)
+			for i := 0; i < len(img.Pix); i += 8 {
+				buf := img.Pix[i : i+8]
+				pix[i/8] = int64(uint64(buf[7]) | uint64(buf[6])<<8 | uint64(buf[5])<<16 | uint64(buf[4])<<24 |
+					uint64(buf[3])<<32 | uint64(buf[2])<<40 | uint64(buf[1])<<48 | uint64(buf[0])<<56)
+			}
+			err := hdu.Write(&pix)
+			if err != nil {
+				t.Errorf("image #%d: error writing raw pixels: %v\n", i, err)
+				continue
+			}
+		case -32:
+			img := test.want.(*f32Image)
+			pix := make([]float32, len(img.Pix)/4)
+			for i := 0; i < len(img.Pix); i += 4 {
+				buf := img.Pix[i : i+4]
+				pix[i/4] = math.Float32frombits(uint32(buf[3]) | uint32(buf[2])<<8 | uint32(buf[1])<<16 | uint32(buf[0])<<24)
+			}
+			err := hdu.Write(&pix)
+			if err != nil {
+				t.Errorf("image #%d: error writing raw pixels: %v\n", i, err)
+				continue
+			}
+		case -64:
+			img := test.want.(*f64Image)
+			pix := make([]float64, len(img.Pix)/8)
+			for i := 0; i < len(img.Pix); i += 8 {
+				buf := img.Pix[i : i+8]
+				pix[i/8] = math.Float64frombits(uint64(buf[7]) | uint64(buf[6])<<8 | uint64(buf[5])<<16 | uint64(buf[4])<<24 |
+					uint64(buf[3])<<32 | uint64(buf[2])<<40 | uint64(buf[1])<<48 | uint64(buf[0])<<56)
+			}
+			err := hdu.Write(&pix)
+			if err != nil {
+				t.Errorf("image #%d: error writing raw pixels: %v\n", i, err)
+				continue
+			}
+		default:
+			t.Errorf("image #%d: invalid bitpix=%d", i, test.bitpix)
+			continue
+		}
+		if !reflect.DeepEqual(hdu.Image(), test.want) {
+			t.Errorf("image #%d:\n got: %v\nwant: %v\n", i, hdu.Image(), test.want)
+			continue
+		}
+	}
+
+	for i, test := range []struct {
+		bitpix int
+		axes   []int
+		want   image.Image
+	}{
+		{
+			bitpix: 0,
+			axes:   nil,
+		},
+		{
+			bitpix: 0,
+			axes:   []int{},
+		},
+		{
+			bitpix: 0,
+			axes:   []int{1},
+		},
+		{
+			bitpix: 0,
+			axes:   []int{0, 0},
+		},
+		{
+			bitpix: 8,
+			axes:   nil,
+		},
+		{
+			bitpix: 8,
+			axes:   []int{},
+		},
+		{
+			bitpix: 8,
+			axes:   []int{1},
+		},
+		{
+			bitpix: 8,
+			axes:   []int{0, 0},
+		},
+	} {
+		hdu := NewImage(test.bitpix, test.axes)
+		img := hdu.Image()
+		if img != test.want {
+			t.Errorf("image #%d:\n got: %v\nwant: %v\n", i, img, test.want)
+			continue
+		}
+	}
+
+	func() {
+		defer func() {
+			if e := recover(); e == nil {
+				t.Errorf("error: expected a BITPIX-related panic")
+			}
+		}()
+
+		hdu := NewImage(0, []int{1, 1})
+		_ = hdu.Image()
+	}()
+}
