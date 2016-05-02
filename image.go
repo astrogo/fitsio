@@ -379,9 +379,20 @@ func (img *imageHDU) Image() image.Image {
 	axes := header.Axes()
 	raw := img.Raw()
 
+	if len(axes) < 2 {
+		return nil
+	}
+
 	// Image width and height.
 	w := axes[0]
 	h := axes[1]
+
+	switch {
+	case w <= 0:
+		return nil
+	case h <= 0:
+		return nil
+	}
 
 	rect := image.Rect(0, 0, w, h)
 
