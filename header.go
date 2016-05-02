@@ -170,7 +170,6 @@ func (hdr *Header) Append(cards ...Card) error {
 			default:
 				return fmt.Errorf("fitsio: duplicate Card [%s] (value=%v)", card.Name, card.Value)
 			}
-			continue
 		}
 		rv := reflect.ValueOf(card.Value)
 		if rv.IsValid() {
@@ -232,7 +231,6 @@ func (hdr *Header) prepend(cards ...Card) error {
 			default:
 				return fmt.Errorf("fitsio: duplicate Card [%s] (value=%v)", card.Name, card.Value)
 			}
-			continue
 		}
 		rv := reflect.ValueOf(card.Value)
 		if rv.IsValid() {

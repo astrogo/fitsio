@@ -403,9 +403,7 @@ type seekDecoder struct {
 }
 
 func (dec *seekDecoder) DecodeHDU() (HDU, error) {
-	var err error
 	panic("not implemented")
-	return nil, err
 }
 
 func hduTypeFrom(cards []Card) (HDUType, bool, error) {

@@ -457,7 +457,7 @@ func TestTableScanStruct(t *testing.T) {
 					}
 					idx := hdu.Index(kk)
 					if idx < 0 {
-						t.Fatalf("could not find index of [%v.%v]", reftype.Name, ft.Name)
+						t.Fatalf("could not find index of [%v.%v]", reftype.Name(), ft.Name)
 					}
 					vv := reflect.ValueOf(table.tuple[i][count][idx])
 					reflect.Indirect(ref).Field(ii).Set(vv)

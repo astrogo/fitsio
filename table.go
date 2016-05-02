@@ -313,7 +313,7 @@ func NewTableFrom(name string, v Value, hdutype HDUType) (*Table, error) {
 	rv := reflect.Indirect(reflect.ValueOf(v))
 	rt := rv.Type()
 	if rt.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("fitsio: NewTableFrom takes a struct value. got: %#T", v)
+		return nil, fmt.Errorf("fitsio: NewTableFrom takes a struct value. got: %T", v)
 	}
 	nmax := rt.NumField()
 	cols := make([]Column, 0, nmax)

@@ -119,7 +119,7 @@ func (enc *streamEncoder) EncodeHDU(hdu HDU) error {
 	case ANY_HDU:
 		fallthrough
 	default:
-		return fmt.Errorf("fitsio: encoding for HDU [%v] not implemented")
+		return fmt.Errorf("fitsio: encoding for HDU [%v] not implemented", hdr.Type())
 	}
 	return err
 }
