@@ -83,14 +83,17 @@ Controls:
 		cur := cursor{file: 0, img: 0}
 
 		// Building the main window.
-		w, err := s.NewWindow(&screen.NewWindowOptions{})
+		w, err := s.NewWindow(&screen.NewWindowOptions{
+			Width:  500,
+			Height: 500,
+		})
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer w.Release()
 
 		// Building the screen buffer.
-		b, err := s.NewBuffer(image.Point{})
+		b, err := s.NewBuffer(image.Point{500, 500})
 		if err != nil {
 			log.Fatal(err)
 		}
