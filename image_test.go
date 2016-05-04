@@ -14,6 +14,8 @@ import (
 	"os"
 	"reflect"
 	"testing"
+
+	"github.com/astrogo/fitsio/fltimg"
 )
 
 func TestImageRW(t *testing.T) {
@@ -419,7 +421,7 @@ func TestImageImage(t *testing.T) {
 			want: func() image.Image {
 				pix := image.NewRGBA(rect)
 				set(pix)
-				img := newF32Image(rect, pix.Pix)
+				img := fltimg.NewGray32(rect, pix.Pix)
 				return img
 			}(),
 			bitpix: -32,
@@ -428,7 +430,7 @@ func TestImageImage(t *testing.T) {
 			want: func() image.Image {
 				pix := image.NewRGBA64(rect)
 				set(pix)
-				img := newF64Image(rect, pix.Pix)
+				img := fltimg.NewGray64(rect, pix.Pix)
 				return img
 			}(),
 			bitpix: -64,
@@ -481,7 +483,7 @@ func TestImageImage(t *testing.T) {
 				continue
 			}
 		case -32:
-			img := test.want.(*f32Image)
+			img := test.want.(*fltimg.Gray32)
 			pix := make([]float32, len(img.Pix)/4)
 			for i := 0; i < len(img.Pix); i += 4 {
 				buf := img.Pix[i : i+4]
@@ -493,7 +495,7 @@ func TestImageImage(t *testing.T) {
 				continue
 			}
 		case -64:
-			img := test.want.(*f64Image)
+			img := test.want.(*fltimg.Gray64)
 			pix := make([]float64, len(img.Pix)/8)
 			for i := 0; i < len(img.Pix); i += 8 {
 				buf := img.Pix[i : i+8]

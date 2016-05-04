@@ -12,12 +12,13 @@ import (
 	"os"
 
 	"github.com/astrogo/fitsio"
+	"github.com/astrogo/fitsio/fltimg"
 )
 
 var (
 	bitpix  = flag.Int("bitpix", 8, "bitpix")
-	width   = flag.Int("width", 280, "image width")
-	height  = flag.Int("height", 240, "image height")
+	width   = flag.Int("width", 50, "image width")
+	height  = flag.Int("height", 50, "image height")
 	nimages = flag.Int("n", 2, "number of images per file")
 )
 
@@ -85,6 +86,7 @@ func main() {
 			if err != nil {
 				log.Fatalf("error writing pixels: %v\n", err)
 			}
+
 		case 64:
 			raw := image.NewRGBA64(rect)
 			setImage(i, raw, *width, *height)
@@ -97,7 +99,33 @@ func main() {
 			err := img.Write(&pix)
 			if err != nil {
 				log.Fatalf("error writing pixels: %v\n", err)
-				continue
+			}
+
+		case -32:
+			raw := fltimg.NewGray32(rect, make([]byte, 4**width**height))
+			setImage(i, raw, *width, *height)
+			pix := make([]float32, len(raw.Pix)/4)
+			for i := 0; i < len(raw.Pix); i += 4 {
+				buf := raw.Pix[i : i+4]
+				pix[i/4] = math.Float32frombits(uint32(buf[3]) | uint32(buf[2])<<8 | uint32(buf[1])<<16 | uint32(buf[0])<<24)
+			}
+			err := img.Write(&pix)
+			if err != nil {
+				log.Fatalf("error writing pixels: %v\n", err)
+			}
+
+		case -64:
+			raw := fltimg.NewGray64(rect, make([]byte, 8**width**height))
+			setImage(i, raw, *width, *height)
+			pix := make([]float64, len(raw.Pix)/8)
+			for i := 0; i < len(raw.Pix); i += 8 {
+				buf := raw.Pix[i : i+8]
+				pix[i/8] = math.Float64frombits(uint64(buf[7]) | uint64(buf[6])<<8 | uint64(buf[5])<<16 | uint64(buf[4])<<24 |
+					uint64(buf[3])<<32 | uint64(buf[2])<<40 | uint64(buf[1])<<48 | uint64(buf[0])<<56)
+			}
+			err := img.Write(&pix)
+			if err != nil {
+				log.Fatalf("error writing pixels: %v\n", err)
 			}
 
 		default:

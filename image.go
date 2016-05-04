@@ -8,15 +8,10 @@ import (
 	"bytes"
 	"fmt"
 	"image"
-	"image/color"
-	"math"
 	"reflect"
 
+	"github.com/astrogo/fitsio/fltimg"
 	"github.com/gonuts/binary"
-)
-
-const (
-	gamma = 1 / 2.2
 )
 
 // Image represents a FITS image
@@ -430,11 +425,11 @@ func (img *imageHDU) Image() image.Image {
 		return img
 
 	case -32:
-		img := newF32Image(rect, raw)
+		img := fltimg.NewGray32(rect, raw)
 		return img
 
 	case -64:
-		img := newF64Image(rect, raw)
+		img := fltimg.NewGray64(rect, raw)
 		return img
 
 	default:
@@ -461,154 +456,4 @@ func (img *imageHDU) freeze() error {
 	}
 
 	return err
-}
-
-type f32Gray float32
-
-func (c f32Gray) RGBA() (r, g, b, a uint32) {
-	f := math.Pow(float64(c), gamma)
-	switch {
-	case f > 1:
-		f = 1
-	case f < 0:
-		f = 0
-	}
-	i := uint32(f * 0xffff)
-	return i, i, i, 0xffff
-}
-
-// f32Image represents an Image with a bitpix=-32
-type f32Image struct {
-	Pix    []uint8
-	Stride int
-	Rect   image.Rectangle
-	Min    float32
-	Max    float32
-}
-
-// newF32Image creates a new f32Image with the given bounds.
-func newF32Image(rect image.Rectangle, pix []byte) *f32Image {
-	w, h := rect.Dx(), rect.Dy()
-	switch {
-	case pix == nil:
-		panic("fitsio: nil pixel buffer")
-	case len(pix) != 4*w*h:
-		panic("fitsio: inconsistent pixels size")
-	}
-	img := &f32Image{Pix: pix, Stride: 4 * w, Rect: rect}
-	min := float32(+math.MaxFloat32)
-	max := float32(-math.MaxFloat32)
-	for i := 0; i < len(img.Pix); i += 4 {
-		v := img.at(i)
-		if v > max {
-			max = v
-		}
-		if v < min {
-			min = v
-		}
-	}
-	img.Min = min
-	img.Max = max
-	return img
-}
-
-func (p *f32Image) at(i int) float32 {
-	buf := p.Pix[i : i+4]
-	bits := uint32(buf[3]) | uint32(buf[2])<<8 | uint32(buf[1])<<16 | uint32(buf[0])<<24
-	return math.Float32frombits(bits)
-}
-
-func (p *f32Image) ColorModel() color.Model { return color.RGBAModel }
-func (p *f32Image) Bounds() image.Rectangle { return p.Rect }
-func (p *f32Image) At(x, y int) color.Color {
-	i := p.PixOffset(x, y)
-	v := p.at(i)
-	f := (v - p.Min) / (p.Max - p.Min)
-	switch {
-	case f < 0:
-		f = 0
-	case f > 1:
-		f = 1
-	}
-	return f32Gray(f)
-}
-
-func (p *f32Image) PixOffset(x, y int) int {
-	return (y-p.Rect.Min.Y)*p.Stride + (x-p.Rect.Min.X)*4
-}
-
-type f64Gray float64
-
-func (c f64Gray) RGBA() (r, g, b, a uint32) {
-	f := math.Pow(float64(c), gamma)
-	switch {
-	case f > 1:
-		f = 1
-	case f < 0:
-		f = 0
-	}
-	i := uint32(f * 0xffffffff)
-	return i, i, i, 0xffff
-}
-
-// f64Image represents an Image with a bitpix=-64
-type f64Image struct {
-	Pix    []uint8
-	Stride int
-	Rect   image.Rectangle
-	Min    float64
-	Max    float64
-}
-
-// newF64Image creates a new f64Image with the given bounds.
-func newF64Image(rect image.Rectangle, pix []byte) *f64Image {
-	w, h := rect.Dx(), rect.Dy()
-	switch {
-	case pix == nil:
-		panic("fitsio: nil pixel buffer")
-	case len(pix) != 8*w*h:
-		panic("fitsio: inconsistent pixels size")
-	}
-	img := &f64Image{pix, 8 * w, rect, 0, 0}
-	min := +math.MaxFloat64
-	max := -math.MaxFloat64
-	for i := 0; i < len(img.Pix); i += 8 {
-		v := img.at(i)
-		if v > max {
-			max = v
-		}
-		if v < min {
-			min = v
-		}
-	}
-	img.Min = min
-	img.Max = max
-	return img
-
-}
-
-func (p *f64Image) at(i int) float64 {
-	buf := p.Pix[i : i+8]
-	bits := uint64(buf[7]) | uint64(buf[6])<<8 | uint64(buf[5])<<16 | uint64(buf[4])<<24 |
-		uint64(buf[3])<<32 | uint64(buf[2])<<40 | uint64(buf[1])<<48 | uint64(buf[0])<<56
-	return math.Float64frombits(bits)
-}
-
-func (p *f64Image) ColorModel() color.Model { return color.RGBA64Model }
-func (p *f64Image) Bounds() image.Rectangle { return p.Rect }
-func (p *f64Image) At(x, y int) color.Color {
-	i := p.PixOffset(x, y)
-	v := p.at(i)
-	f := (1 - (v-p.Min)/(p.Max-p.Min))
-	switch {
-	case f < 0:
-		f = 0
-	case f > 1:
-		f = 1
-	}
-	return f64Gray(f)
-}
-
-func (p *f64Image) PixOffset(x, y int) int {
-	return (y-p.Rect.Min.Y)*p.Stride + (x-p.Rect.Min.X)*8
 }
