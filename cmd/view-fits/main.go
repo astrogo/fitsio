@@ -11,8 +11,12 @@ import (
 	"image/color"
 	"image/draw"
 	"image/png"
+	"io"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
+	"strings"
 
 	"github.com/astrogo/fitsio"
 
@@ -42,6 +46,8 @@ $ view-fits [file1 [file2 [...]]]
 Examples:
 $ view-fits astrogo/fitsio/testdata/file-img2-bitpix+08.fits
 $ view-fits astrogo/fitsio/testdata/file-img2-bitpix*.fits
+$ view-fits http://data.astropy.org/tutorials/FITS-images/HorseHead.fits
+$ view-fits file:///some/file.fits
 
 Controls:
 - left/right arrows: switch to previous/next file
@@ -256,17 +262,16 @@ func processFiles() []fileInfo {
 
 		finfo := fileInfo{Name: fname}
 
-		// Opening the file.
-		r, err := os.Open(fname)
+		r, err := openStream(fname)
 		if err != nil {
-			log.Fatal("Can not open the input file: %s.", err)
+			log.Fatalf("Can not open the input file: %v", err)
 		}
 		defer r.Close()
 
 		// Opening the FITS file.
 		f, err := fitsio.Open(r)
 		if err != nil {
-			log.Fatal("Can not open the FITS input file: %s.", err)
+			log.Fatalf("Can not open the FITS input file: %v", err)
 		}
 		defer f.Close()
 
@@ -294,6 +299,40 @@ func processFiles() []fileInfo {
 	}
 
 	return infos
+}
+
+func openStream(name string) (io.ReadCloser, error) {
+	switch {
+	case strings.HasPrefix(name, "http://") || strings.HasPrefix(name, "https://"):
+		resp, err := http.Get(name)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+
+		f, err := ioutil.TempFile("", "view-fits-")
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = io.Copy(f, resp.Body)
+		if err != nil {
+			f.Close()
+			return nil, err
+		}
+
+		// make sure we have at least a full FITS block
+		f.Seek(0, 2880)
+		f.Seek(0, 0)
+
+		return f, nil
+
+	case strings.HasPrefix(name, "file://"):
+		name = name[len("file://"):]
+		return os.Open(name)
+	default:
+		return os.Open(name)
+	}
 }
 
 type releaser interface {
