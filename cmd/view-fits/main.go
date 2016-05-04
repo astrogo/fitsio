@@ -2,6 +2,26 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// view-fits is a simple program to display images in a FITS file.
+//
+// Usage of view-fits:
+// $ view-fits [file1 [file2 [...]]]
+//
+// Examples:
+//  $ view-fits astrogo/fitsio/testdata/file-img2-bitpix+08.fits
+//  $ view-fits astrogo/fitsio/testdata/file-img2-bitpix*.fits
+//  $ view-fits http://data.astropy.org/tutorials/FITS-images/HorseHead.fits
+//  $ view-fits file:///some/file.fits
+//
+// Controls:
+//  - left/right arrows: switch to previous/next file
+//  - up/down arrows:    switch to previous/next image in the current file
+//  - r:                 reload/redisplay current image
+//  - z:                 resize window to fit current image
+//  - p:                 print current image to 'output.png'
+//  - ?:                 show help
+//  - q/ESC:             quit
+//
 package main
 
 import (
