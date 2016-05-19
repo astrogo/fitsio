@@ -148,7 +148,7 @@ Mouse controls:
 			mbl image.Rectangle // mouse button-left position
 
 			repaint = true
-			pan     = false
+			panning = false
 		)
 
 		for {
@@ -171,11 +171,11 @@ Mouse controls:
 				case mouse.ButtonLeft:
 					switch e.Direction {
 					case mouse.DirPress:
-						pan = true
+						panning = true
 						mbl = image.Rect(ix, iy, ix, iy)
 
 					case mouse.DirRelease:
-						pan = false
+						panning = false
 						mbl.Max = image.Point{ix, iy}
 
 						switch {
@@ -202,7 +202,7 @@ Mouse controls:
 					}
 				}
 
-				if pan {
+				if panning {
 					repaint = true
 					img := &infos[cur.file].Images[cur.img]
 					mbl.Max = image.Point{ix, iy}
