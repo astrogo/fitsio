@@ -82,8 +82,8 @@ Controls:
 - r:                 reload/redisplay current image
 - z:                 resize window to fit current image
 - p:                 print current image to 'output.png'
-- +:                 increase zoom-level by 20%
-- -:                 decrease zoom-level by 20%
+- +:                 increase zoom-level by 20%%
+- -:                 decrease zoom-level by 20%%
 - ?:                 show help
 - q/ESC:             quit
 
