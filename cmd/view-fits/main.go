@@ -44,13 +44,20 @@ import (
 	"golang.org/x/exp/shiny/screen"
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/lifecycle"
+	"golang.org/x/mobile/event/mouse"
 	"golang.org/x/mobile/event/paint"
 	"golang.org/x/mobile/event/size"
 )
 
 type fileInfo struct {
 	Name   string
-	Images []image.Image
+	Images []imageInfo
+}
+
+type imageInfo struct {
+	image.Image
+	scale int // image scale in percents (default: 100%)
+	orig  image.Point
 }
 
 func main() {
@@ -77,6 +84,9 @@ Controls:
 - p:                 print current image to 'output.png'
 - ?:                 show help
 - q/ESC:             quit
+
+Mouse controls:
+- Left button:       pan image
 `)
 	}
 
@@ -133,6 +143,8 @@ Controls:
 			sz size.Event
 			//bkg = color.Black
 			bkg = color.RGBA{0xe0, 0xe0, 0xe0, 0xff} // Material Design "Grey 300"
+
+			mbl image.Rectangle // mouse button-left position
 		)
 
 		for {
@@ -147,8 +159,32 @@ Controls:
 				default:
 					repaint = false
 				}
-				if repaint {
-					w.Send(paint.Event{})
+
+			case mouse.Event:
+				switch e.Button {
+				case mouse.ButtonLeft:
+					switch e.Direction {
+					case mouse.DirPress:
+						x := int(e.X)
+						y := int(e.Y)
+						mbl = image.Rect(x, y, x, y)
+					case mouse.DirRelease:
+						x := int(e.X)
+						y := int(e.Y)
+						mbl.Max = image.Point{x, y}
+
+						switch {
+						case e.Modifiers&key.ModShift != 0:
+							// zoom-in
+						default:
+							// pan
+							repaint = true
+							img := &infos[cur.file].Images[cur.img]
+							dx := mbl.Dx()
+							dy := mbl.Dy()
+							img.orig = originTrans(img.orig.Sub(image.Point{dx, dy}), sz.Bounds(), img)
+						}
+					}
 				}
 
 			case key.Event:
@@ -242,10 +278,6 @@ Controls:
 					log.Printf("printed current image to [%s]\n", out.Name())
 				}
 
-				if repaint {
-					w.Send(paint.Event{})
-				}
-
 			case size.Event:
 				sz = e
 
@@ -263,11 +295,15 @@ Controls:
 				}
 				defer release(b)
 
-				draw.Draw(b.RGBA(), b.Bounds(), img, image.Point{}, draw.Src)
+				draw.Draw(b.RGBA(), b.Bounds(), img, img.orig, draw.Src)
 
 				w.Fill(sz.Bounds(), bkg, draw.Src)
 				w.Upload(image.Point{}, b, img.Bounds())
 				w.Publish()
+			}
+
+			if repaint {
+				w.Send(paint.Event{})
 			}
 
 		}
@@ -307,7 +343,11 @@ func processFiles() []fileInfo {
 				if hdu, ok := hdu.(fitsio.Image); ok {
 					img := hdu.Image()
 					if img != nil {
-						finfo.Images = append(finfo.Images, img)
+						finfo.Images = append(finfo.Images, imageInfo{
+							Image: img,
+							scale: 100,
+							orig:  image.Point{},
+						})
 					}
 				}
 			}
@@ -363,4 +403,54 @@ func release(r releaser) {
 	if r != nil {
 		r.Release()
 	}
+}
+
+func min(i, j int) int {
+	if i < j {
+		return i
+	}
+	return j
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+// originTrans translates the origin with respect to the current image and the
+// current canvas size. This makes sure we never incorrect position the image.
+// (i.e., panning never goes too far, and whenever the canvas is bigger than
+// the image, the origin is *always* (0, 0).
+func originTrans(pt image.Point, win image.Rectangle, img *imageInfo) image.Point {
+	// If there's no valid image, then always return (0, 0).
+	if img == nil {
+		return image.Point{0, 0}
+	}
+
+	// Quick aliases.
+	ww := win.Dx()
+	wh := win.Dy()
+	dw := img.Bounds().Dx() - ww
+	dh := img.Bounds().Dy() - wh
+
+	// Set the allowable range of the origin point of the image.
+	// i.e., never less than (0, 0) and never greater than the width/height
+	// of the image that isn't viewable at any given point (which is determined
+	// by the canvas size).
+	pt.X = min(img.Bounds().Min.X+dw, max(pt.X, 0))
+	pt.Y = min(img.Bounds().Min.Y+dh, max(pt.Y, 0))
+
+	// Validate origin point. If the width/height of an image is smaller than
+	// the canvas width/height, then the image origin cannot change in x/y
+	// direction.
+	if img.Bounds().Dx() < ww {
+		pt.X = 0
+	}
+	if img.Bounds().Dy() < wh {
+		pt.Y = 0
+	}
+
+	return pt
 }
