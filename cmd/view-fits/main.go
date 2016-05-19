@@ -82,6 +82,8 @@ Controls:
 - r:                 reload/redisplay current image
 - z:                 resize window to fit current image
 - p:                 print current image to 'output.png'
+- +:                 increase zoom-level by 20%
+- -:                 decrease zoom-level by 20%
 - ?:                 show help
 - q/ESC:             quit
 
@@ -185,6 +187,16 @@ Mouse controls:
 							img.orig = originTrans(img.orig.Sub(image.Point{dx, dy}), sz.Bounds(), img)
 						}
 					}
+
+				case mouse.ButtonRight:
+				case mouse.ButtonWheelDown:
+					if e.Direction == mouse.DirPress {
+						ctrlZoomOut(&infos[cur.file].Images[cur.img], &repaint)
+					}
+				case mouse.ButtonWheelUp:
+					if e.Direction == mouse.DirPress {
+						ctrlZoomIn(&infos[cur.file].Images[cur.img], &repaint)
+					}
 				}
 
 			case key.Event:
@@ -196,6 +208,21 @@ Mouse controls:
 					if e.Direction == key.DirPress && e.Modifiers&key.ModShift != 0 {
 						flag.Usage()
 						continue
+					}
+
+				case key.CodeKeypadPlusSign:
+					if e.Direction == key.DirPress {
+						ctrlZoomIn(&infos[cur.file].Images[cur.img], &repaint)
+					}
+
+				case key.CodeEqualSign:
+					if e.Direction == key.DirPress && e.Modifiers&key.ModShift != 0 {
+						ctrlZoomIn(&infos[cur.file].Images[cur.img], &repaint)
+					}
+
+				case key.CodeHyphenMinus:
+					if e.Direction == key.DirPress {
+						ctrlZoomOut(&infos[cur.file].Images[cur.img], &repaint)
 					}
 
 				case key.CodeRightArrow:
@@ -403,6 +430,25 @@ func release(r releaser) {
 	if r != nil {
 		r.Release()
 	}
+}
+
+func ctrlZoomOut(img *imageInfo, repaint *bool) {
+	*repaint = true
+	if img.scale <= 20 {
+		*repaint = false
+		return
+	}
+
+	img.scale -= 20
+
+	if img.scale <= 0 {
+		img.scale = 20
+	}
+}
+
+func ctrlZoomIn(img *imageInfo, repaint *bool) {
+	*repaint = true
+	img.scale += 20
 }
 
 func min(i, j int) int {
