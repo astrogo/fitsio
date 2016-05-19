@@ -39,6 +39,7 @@ import (
 	"strings"
 
 	"github.com/astrogo/fitsio"
+	"github.com/nfnt/resize"
 
 	"golang.org/x/exp/shiny/driver"
 	"golang.org/x/exp/shiny/screen"
@@ -89,6 +90,8 @@ Controls:
 
 Mouse controls:
 - Left button:       pan image
+- Wheel-Up:          increase zoom-level by 20%%
+- Wheel-Down:        decrease zoom-level by 20%%
 `)
 	}
 
@@ -192,14 +195,17 @@ Mouse controls:
 					}
 
 				case mouse.ButtonRight:
+					// no-op
+
 				case mouse.ButtonWheelDown:
-					if e.Direction == mouse.DirPress {
+					if e.Direction == mouse.DirStep {
 						ctrlZoomOut(&infos[cur.file].Images[cur.img], &repaint)
 					}
 				case mouse.ButtonWheelUp:
-					if e.Direction == mouse.DirPress {
+					if e.Direction == mouse.DirStep {
 						ctrlZoomIn(&infos[cur.file].Images[cur.img], &repaint)
 					}
+
 				}
 
 				if panning {
@@ -223,13 +229,8 @@ Mouse controls:
 						continue
 					}
 
-				case key.CodeKeypadPlusSign:
+				case key.CodeKeypadPlusSign, key.CodeEqualSign:
 					if e.Direction == key.DirPress {
-						ctrlZoomIn(&infos[cur.file].Images[cur.img], &repaint)
-					}
-
-				case key.CodeEqualSign:
-					if e.Direction == key.DirPress && e.Modifiers&key.ModShift != 0 {
 						ctrlZoomIn(&infos[cur.file].Images[cur.img], &repaint)
 					}
 
@@ -329,16 +330,17 @@ Mouse controls:
 				img := infos[cur.file].Images[cur.img]
 
 				release(b)
-				b, err = s.NewBuffer(img.Bounds().Size())
+				curImg := img.get()
+				b, err = s.NewBuffer(curImg.Bounds().Size())
 				if err != nil {
 					log.Fatal(err)
 				}
 				defer release(b)
 
-				draw.Draw(b.RGBA(), b.Bounds(), img, img.orig, draw.Src)
+				draw.Draw(b.RGBA(), b.Bounds(), curImg, img.orig, draw.Src)
 
 				w.Fill(sz.Bounds(), bkg, draw.Src)
-				w.Upload(image.Point{}, b, img.Bounds())
+				w.Upload(image.Point{}, b, curImg.Bounds())
 				w.Publish()
 			}
 
@@ -462,6 +464,15 @@ func ctrlZoomOut(img *imageInfo, repaint *bool) {
 func ctrlZoomIn(img *imageInfo, repaint *bool) {
 	*repaint = true
 	img.scale += 20
+}
+
+func (img *imageInfo) get() image.Image {
+	if img.scale == 100 {
+		return img.Image
+	}
+	width := uint(float64(img.scale) / 100.0 * float64(img.Bounds().Dx()))
+	height := uint(float64(img.scale) / 100.0 * float64(img.Bounds().Dy()))
+	return resize.Resize(width, height, img.Image, resize.MitchellNetravali)
 }
 
 func min(i, j int) int {
