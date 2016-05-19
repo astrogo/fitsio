@@ -140,13 +140,15 @@ Mouse controls:
 		w.Fill(b.Bounds(), color.Black, draw.Src)
 		w.Publish()
 
-		repaint := true
 		var (
 			sz size.Event
 			//bkg = color.Black
 			bkg = color.RGBA{0xe0, 0xe0, 0xe0, 0xff} // Material Design "Grey 300"
 
 			mbl image.Rectangle // mouse button-left position
+
+			repaint = true
+			pan     = false
 		)
 
 		for {
@@ -163,17 +165,18 @@ Mouse controls:
 				}
 
 			case mouse.Event:
+				ix := int(e.X)
+				iy := int(e.Y)
 				switch e.Button {
 				case mouse.ButtonLeft:
 					switch e.Direction {
 					case mouse.DirPress:
-						x := int(e.X)
-						y := int(e.Y)
-						mbl = image.Rect(x, y, x, y)
+						pan = true
+						mbl = image.Rect(ix, iy, ix, iy)
+
 					case mouse.DirRelease:
-						x := int(e.X)
-						y := int(e.Y)
-						mbl.Max = image.Point{x, y}
+						pan = false
+						mbl.Max = image.Point{ix, iy}
 
 						switch {
 						case e.Modifiers&key.ModShift != 0:
@@ -197,6 +200,16 @@ Mouse controls:
 					if e.Direction == mouse.DirPress {
 						ctrlZoomIn(&infos[cur.file].Images[cur.img], &repaint)
 					}
+				}
+
+				if pan {
+					repaint = true
+					img := &infos[cur.file].Images[cur.img]
+					mbl.Max = image.Point{ix, iy}
+					dx := mbl.Dx()
+					dy := mbl.Dy()
+					img.orig = originTrans(img.orig.Sub(image.Point{dx, dy}), sz.Bounds(), img)
+					mbl.Min = mbl.Max
 				}
 
 			case key.Event:
