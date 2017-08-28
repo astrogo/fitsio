@@ -189,36 +189,24 @@ func (col *Column) writeBin(table *Table, icol int, irow int64, ptr interface{})
 		beg := table.rowsz*int(irow) + col.offset
 		end := beg + col.dtype.dsize
 
-		buf := &sectionWriter{
-			buf: table.data[beg:end],
-			beg: 0,
-		}
-		benc := binary.NewEncoder(buf)
-		benc.Order = binary.BigEndian
-
+		w := newWriter(table.data[beg:end])
 		slice := reflect.ValueOf(ptr).Elem()
 		nmax := slice.Len()
 
 		switch col.dtype.dsize {
 		case 8:
-			data := [2]int32{int32(nmax), int32(len(table.heap))}
-			err = benc.Encode(&data)
-			if err != nil {
-				return fmt.Errorf("fitsio: problem encoding slice 32b-descriptor: %v\n", err)
-			}
+			w.writeI32(int32(nmax))
+			w.writeI32(int32(len(table.heap)))
 
 		case 16:
-			data := [2]int64{int64(nmax), int64(len(table.heap))}
-			err = benc.Encode(&data)
-			if err != nil {
-				return fmt.Errorf("fitsio: problem encoding slice 64b-descriptor: %v\n", err)
-			}
+			w.writeI64(int64(nmax))
+			w.writeI64(int64(len(table.heap)))
 		}
 
 		{
 			buf := new(bytes.Buffer)
 			buf.Grow(nmax * col.dtype.hsize)
-			benc = binary.NewEncoder(buf)
+			benc := binary.NewEncoder(buf)
 			benc.Order = binary.BigEndian
 
 			for i := 0; i < nmax; i++ {
@@ -235,12 +223,8 @@ func (col *Column) writeBin(table *Table, icol int, irow int64, ptr interface{})
 		beg := table.rowsz*int(irow) + col.offset
 		end := beg + (col.dtype.dsize * col.dtype.len)
 
-		//buf := new(bytes.Buffer)
-		buf := &sectionWriter{
-			buf: table.data[beg:end],
-			beg: 0,
-		}
-		benc := binary.NewEncoder(buf)
+		w := newWriter(table.data[beg:end])
+		benc := binary.NewEncoder(w)
 		benc.Order = binary.BigEndian
 		err = benc.Encode(ptr)
 		if err != nil {
@@ -253,36 +237,20 @@ func (col *Column) writeBin(table *Table, icol int, irow int64, ptr interface{})
 		reflect.Float32, reflect.Float64,
 		reflect.Complex64, reflect.Complex128:
 
-		//scalar := true
-		//err = col.decode(table, n, rt, rv, scalar)
-
 		beg := table.rowsz*int(irow) + col.offset
 		end := beg + col.dtype.dsize
 
-		//buf := bytes.NewBuffer(row)
-		buf := &sectionWriter{
-			buf: table.data[beg:end],
-			beg: 0,
-		}
-
-		benc := binary.NewEncoder(buf)
+		w := newWriter(table.data[beg:end])
+		benc := binary.NewEncoder(w)
 		benc.Order = binary.BigEndian
 		err = benc.Encode(ptr)
 
 	case reflect.String:
 
-		//scalar := true
-		//err = col.decode(table, n, rt, rv, scalar)
-
 		beg := table.rowsz*int(irow) + col.offset
 		end := beg + col.dtype.dsize
 
-		//buf := bytes.NewBuffer(row)
-		buf := &sectionWriter{
-			buf: table.data[beg:end],
-			beg: 0,
-		}
-
+		buf := newWriter(table.data[beg:end])
 		str := rv.String()
 		data := make([]byte, 0, len(str)+1)
 		data = append(data, '\x00')
@@ -374,10 +342,7 @@ func (col *Column) writeTxt(table *Table, icol int, irow int64, ptr interface{})
 
 	beg := table.rowsz*int(irow) + col.offset
 	end := beg + col.dtype.dsize
-	buf := &sectionWriter{
-		buf: table.data[beg:end],
-		beg: 0,
-	}
+	w := newWriter(table.data[beg:end])
 
 	rv := reflect.Indirect(reflect.ValueOf(ptr))
 	rt := reflect.TypeOf(rv.Interface())
@@ -406,14 +371,14 @@ func (col *Column) writeTxt(table *Table, icol int, irow int64, ptr interface{})
 
 		str := fmt.Sprintf(col.txtfmt, rv.Interface())
 		n := 0
-		n, err = fmt.Fprintf(buf, str)
+		n, err = fmt.Fprintf(w, str)
 		if err != nil {
 			return fmt.Errorf("fitsio: error writing '%#v': %v", rv.Interface(), err)
 		}
-		if n != len(buf.buf) {
+		if n != len(w.p) {
 			return fmt.Errorf(
 				"fitsio: error writing '%#v'. expected %d bytes. wrote %d",
-				rv.Interface(), len(buf.buf), n,
+				rv.Interface(), len(w.p), n,
 			)
 		}
 
