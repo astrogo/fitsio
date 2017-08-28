@@ -67,3 +67,61 @@ func (r *rbuf) readF64(v *float64) {
 	r.c += 8
 	*v = math.Float64frombits(binary.BigEndian.Uint64(r.p[beg:r.c]))
 }
+
+type wbuf struct {
+	p []byte // buffer of data to write to
+	c int    // current position in buffer of data
+}
+
+func newWriter(data []byte) *wbuf {
+	return &wbuf{p: data, c: 0}
+}
+
+func (w *wbuf) Write(data []byte) (int, error) {
+	n := copy(w.p[w.c:], data)
+	if n < len(data) {
+		return n, io.ErrShortWrite
+	}
+	w.c += n
+	return n, nil
+}
+
+func (w *wbuf) writeByte(v byte) {
+	w.p[w.c] = v
+	w.c++
+}
+
+func (w *wbuf) writeI8(v int8) {
+	w.p[w.c] = byte(v)
+	w.c++
+}
+
+func (w *wbuf) writeI16(v int16) {
+	beg := w.c
+	w.c += 2
+	binary.BigEndian.PutUint16(w.p[beg:w.c], uint16(v))
+}
+
+func (w *wbuf) writeI32(v int32) {
+	beg := w.c
+	w.c += 4
+	binary.BigEndian.PutUint32(w.p[beg:w.c], uint32(v))
+}
+
+func (w *wbuf) writeI64(v int64) {
+	beg := w.c
+	w.c += 8
+	binary.BigEndian.PutUint64(w.p[beg:w.c], uint64(v))
+}
+
+func (w *wbuf) writeF32(v float32) {
+	beg := w.c
+	w.c += 4
+	binary.BigEndian.PutUint32(w.p[beg:w.c], math.Float32bits(v))
+}
+
+func (w *wbuf) writeF64(v float64) {
+	beg := w.c
+	w.c += 8
+	binary.BigEndian.PutUint64(w.p[beg:w.c], math.Float64bits(v))
+}

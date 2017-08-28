@@ -10,7 +10,6 @@ import (
 	"reflect"
 
 	"github.com/astrogo/fitsio/fltimg"
-	"github.com/gonuts/binary"
 )
 
 // Image represents a FITS image
@@ -289,34 +288,20 @@ func (img *imageHDU) Write(data interface{}) error {
 	}
 
 	img.raw = make([]byte, pixsz*nelmts)
-	buf := &sectionWriter{
-		buf: img.raw,
-		beg: 0,
-	}
-	enc := binary.NewEncoder(buf)
-	enc.Order = binary.BigEndian
-
+	w := newWriter(img.raw)
 	switch data := rv.Interface().(type) {
 	case []byte:
 		if hdr.Bitpix() != 8 {
 			return fmt.Errorf("fitsio: got a %T but bitpix!=%d", data, hdr.Bitpix())
 		}
-		for _, v := range data {
-			err = enc.Encode(&v)
-			if err != nil {
-				return fmt.Errorf("fitsio: %v", err)
-			}
-		}
+		copy(img.raw, data)
 
 	case []int8:
 		if hdr.Bitpix() != 8 {
 			return fmt.Errorf("fitsio: got a %T but bitpix!=%d", data, hdr.Bitpix())
 		}
 		for _, v := range data {
-			err = enc.Encode(&v)
-			if err != nil {
-				return fmt.Errorf("fitsio: %v", err)
-			}
+			w.writeI8(v)
 		}
 
 	case []int16:
@@ -324,10 +309,7 @@ func (img *imageHDU) Write(data interface{}) error {
 			return fmt.Errorf("fitsio: got a %T but bitpix!=%d", data, hdr.Bitpix())
 		}
 		for _, v := range data {
-			err = enc.Encode(&v)
-			if err != nil {
-				return fmt.Errorf("fitsio: %v", err)
-			}
+			w.writeI16(v)
 		}
 
 	case []int32:
@@ -335,10 +317,7 @@ func (img *imageHDU) Write(data interface{}) error {
 			return fmt.Errorf("fitsio: got a %T but bitpix!=%d", data, hdr.Bitpix())
 		}
 		for _, v := range data {
-			err = enc.Encode(&v)
-			if err != nil {
-				return fmt.Errorf("fitsio: %v", err)
-			}
+			w.writeI32(v)
 		}
 
 	case []int64:
@@ -346,10 +325,7 @@ func (img *imageHDU) Write(data interface{}) error {
 			return fmt.Errorf("fitsio: got a %T but bitpix!=%d", data, hdr.Bitpix())
 		}
 		for _, v := range data {
-			err = enc.Encode(&v)
-			if err != nil {
-				return fmt.Errorf("fitsio: %v", err)
-			}
+			w.writeI64(v)
 		}
 
 	case []float32:
@@ -357,10 +333,7 @@ func (img *imageHDU) Write(data interface{}) error {
 			return fmt.Errorf("fitsio: got a %T but bitpix!=%d", data, hdr.Bitpix())
 		}
 		for _, v := range data {
-			err = enc.Encode(&v)
-			if err != nil {
-				return fmt.Errorf("fitsio: %v", err)
-			}
+			w.writeF32(v)
 		}
 
 	case []float64:
@@ -368,10 +341,7 @@ func (img *imageHDU) Write(data interface{}) error {
 			return fmt.Errorf("fitsio: got a %T but bitpix!=%d", data, hdr.Bitpix())
 		}
 		for _, v := range data {
-			err = enc.Encode(&v)
-			if err != nil {
-				return fmt.Errorf("fitsio: %v", err)
-			}
+			w.writeF64(v)
 		}
 
 	default:
