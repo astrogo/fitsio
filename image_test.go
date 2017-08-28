@@ -575,14 +575,44 @@ func TestImageImage(t *testing.T) {
 	}()
 }
 
-func BenchmarkImageReadF64_10(b *testing.B)     { benchImageReadF64(b, 10) }
-func BenchmarkImageReadF64_100(b *testing.B)    { benchImageReadF64(b, 100) }
-func BenchmarkImageReadF64_1000(b *testing.B)   { benchImageReadF64(b, 1000) }
-func BenchmarkImageReadF64_10000(b *testing.B)  { benchImageReadF64(b, 10000) }
-func BenchmarkImageReadF64_100000(b *testing.B) { benchImageReadF64(b, 100000) }
+func BenchmarkImageReadI8_10(b *testing.B)     { benchImageRead(b, 8, 10) }
+func BenchmarkImageReadI8_100(b *testing.B)    { benchImageRead(b, 8, 100) }
+func BenchmarkImageReadI8_1000(b *testing.B)   { benchImageRead(b, 8, 1000) }
+func BenchmarkImageReadI8_10000(b *testing.B)  { benchImageRead(b, 8, 10000) }
+func BenchmarkImageReadI8_100000(b *testing.B) { benchImageRead(b, 8, 100000) }
 
-func benchImageReadF64(b *testing.B, n int) {
-	fname := genImageF64(b, n)
+func BenchmarkImageReadI16_10(b *testing.B)     { benchImageRead(b, 16, 10) }
+func BenchmarkImageReadI16_100(b *testing.B)    { benchImageRead(b, 16, 100) }
+func BenchmarkImageReadI16_1000(b *testing.B)   { benchImageRead(b, 16, 1000) }
+func BenchmarkImageReadI16_10000(b *testing.B)  { benchImageRead(b, 16, 10000) }
+func BenchmarkImageReadI16_100000(b *testing.B) { benchImageRead(b, 16, 100000) }
+
+func BenchmarkImageReadI32_10(b *testing.B)     { benchImageRead(b, 32, 10) }
+func BenchmarkImageReadI32_100(b *testing.B)    { benchImageRead(b, 32, 100) }
+func BenchmarkImageReadI32_1000(b *testing.B)   { benchImageRead(b, 32, 1000) }
+func BenchmarkImageReadI32_10000(b *testing.B)  { benchImageRead(b, 32, 10000) }
+func BenchmarkImageReadI32_100000(b *testing.B) { benchImageRead(b, 32, 100000) }
+
+func BenchmarkImageReadI64_10(b *testing.B)     { benchImageRead(b, 64, 10) }
+func BenchmarkImageReadI64_100(b *testing.B)    { benchImageRead(b, 64, 100) }
+func BenchmarkImageReadI64_1000(b *testing.B)   { benchImageRead(b, 64, 1000) }
+func BenchmarkImageReadI64_10000(b *testing.B)  { benchImageRead(b, 64, 10000) }
+func BenchmarkImageReadI64_100000(b *testing.B) { benchImageRead(b, 64, 100000) }
+
+func BenchmarkImageReadF32_10(b *testing.B)     { benchImageRead(b, -32, 10) }
+func BenchmarkImageReadF32_100(b *testing.B)    { benchImageRead(b, -32, 100) }
+func BenchmarkImageReadF32_1000(b *testing.B)   { benchImageRead(b, -32, 1000) }
+func BenchmarkImageReadF32_10000(b *testing.B)  { benchImageRead(b, -32, 10000) }
+func BenchmarkImageReadF32_100000(b *testing.B) { benchImageRead(b, -32, 100000) }
+
+func BenchmarkImageReadF64_10(b *testing.B)     { benchImageRead(b, -64, 10) }
+func BenchmarkImageReadF64_100(b *testing.B)    { benchImageRead(b, -64, 100) }
+func BenchmarkImageReadF64_1000(b *testing.B)   { benchImageRead(b, -64, 1000) }
+func BenchmarkImageReadF64_10000(b *testing.B)  { benchImageRead(b, -64, 10000) }
+func BenchmarkImageReadF64_100000(b *testing.B) { benchImageRead(b, -64, 100000) }
+
+func benchImageRead(b *testing.B, bitpix int, n int) {
+	fname := genImage(b, bitpix, n)
 	defer os.RemoveAll(fname)
 
 	r, err := os.Open(fname)
@@ -599,19 +629,38 @@ func benchImageReadF64(b *testing.B, n int) {
 
 	hdu := f.HDU(0)
 	img := hdu.(Image)
-	raw := make([]float64, 0, n)
+	var ptr interface{}
+	switch bitpix {
+	case 8:
+		raw := make([]int8, 0, n)
+		ptr = &raw
+	case 16:
+		raw := make([]int16, 0, n)
+		ptr = &raw
+	case 32:
+		raw := make([]int32, 0, n)
+		ptr = &raw
+	case 64:
+		raw := make([]int64, 0, n)
+		ptr = &raw
+	case -32:
+		raw := make([]float32, 0, n)
+		ptr = &raw
+	case -64:
+		raw := make([]float64, 0, n)
+		ptr = &raw
+	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		raw = raw[:0]
-		err = img.Read(&raw)
+		err = img.Read(ptr)
 		if err != nil {
 			b.Fatal(err)
 		}
 	}
 }
 
-func genImageF64(b *testing.B, n int) string {
+func genImage(b *testing.B, bitpix int, n int) string {
 	w, err := ioutil.TempFile("", "go-test-fitsio-")
 	if err != nil {
 		b.Fatal(err)
@@ -624,16 +673,57 @@ func genImageF64(b *testing.B, n int) string {
 	}
 	defer f.Close()
 
-	const bitpix = -64
+	var ptr interface{}
 	axes := []int{n}
-	data := make([]float64, n)
-	for i := range data {
-		data[i] = float64(i)
+	switch bitpix {
+	case 8:
+		data := make([]int8, n)
+		for i := range data {
+			data[i] = int8(i)
+		}
+		ptr = &data
+
+	case 16:
+		data := make([]int16, n)
+		for i := range data {
+			data[i] = int16(i)
+		}
+		ptr = &data
+
+	case 32:
+		data := make([]int32, n)
+		for i := range data {
+			data[i] = int32(i)
+		}
+		ptr = &data
+
+	case 64:
+		data := make([]int64, n)
+		for i := range data {
+			data[i] = int64(i)
+		}
+		ptr = &data
+
+	case -32:
+		data := make([]float32, n)
+		for i := range data {
+			data[i] = float32(i)
+		}
+		ptr = &data
+
+	case -64:
+		data := make([]float64, n)
+		for i := range data {
+			data[i] = float64(i)
+		}
+		ptr = &data
+	default:
+		panic(fmt.Errorf("invalid bitpix=%d", bitpix))
 	}
 
 	img := NewImage(bitpix, axes)
 	defer img.Close()
-	err = img.Write(&data)
+	err = img.Write(ptr)
 	if err != nil {
 		b.Fatal(err)
 	}
