@@ -193,7 +193,7 @@ func (dec *streamDecoder) loadImage(hdr *Header) ([]byte, error) {
 		return buf, nil
 	}
 
-	n, err := dec.r.Read(buf)
+	n, err := io.ReadFull(dec.r, buf)
 	if err != nil {
 		return nil, fmt.Errorf("fitsio: error reading buffer: %v", err)
 	}
@@ -246,7 +246,7 @@ func (dec *streamDecoder) loadTable(hdr *Header, htype HDUType) (*Table, error) 
 	blocksz := alignBlock(datasz + heapsz)
 
 	block := make([]byte, blocksz)
-	n, err := dec.r.Read(block)
+	n, err := io.ReadFull(dec.r, block)
 	if err != nil {
 		return nil, err
 	}
