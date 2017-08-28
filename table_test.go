@@ -2168,4 +2168,53 @@ func TestTableMapsRW(t *testing.T) {
 	}
 }
 
-// EOF
+func BenchmarkTableWriteF64s(b *testing.B) {
+	var (
+		data  = []float64{1, 2, 3, 4, 5, 6, 7, 8, 9, 0}
+		cols  = []Column{{Name: "col", Format: "D"}}
+		htype = BINARY_TBL
+	)
+
+	w, err := ioutil.TempFile("", "go-fitsio-test-")
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer w.Close()
+
+	f, err := Create(w)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	phdu, err := NewPrimaryHDU(nil)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	err = f.Write(phdu)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	tbl, err := NewTable("test", cols, htype)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer tbl.Close()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for j := 0; j < b.N; j++ {
+		for _, v := range data {
+			err = tbl.Write(&v)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	}
+
+	err = f.Write(tbl)
+	if err != nil {
+		b.Fatal(err)
+	}
+}
