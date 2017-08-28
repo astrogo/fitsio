@@ -119,27 +119,31 @@ func (img *imageHDU) Read(ptr interface{}) error {
 		rv.SetLen(nelmts)
 	}
 
-	var cnv = func(v reflect.Value) reflect.Value {
-		return v
-	}
-
-	bdec := binary.NewDecoder(bytes.NewBuffer(img.raw))
-	bdec.Order = binary.BigEndian
-
+	r := bytes.NewReader(img.raw)
 	switch hdr.Bitpix() {
 	case 8:
 		itype := reflect.TypeOf((*byte)(nil)).Elem()
+		if itype == otype {
+			slice := rv.Interface().([]byte)
+			for i := 0; i < nelmts; i++ {
+				err = readByte(r, &slice[i])
+				if err != nil {
+					return fmt.Errorf("fitsio: %v", err)
+				}
+			}
+			return nil
+		}
+
 		if !rt.Elem().ConvertibleTo(itype) {
 			return fmt.Errorf("fitsio: can not convert []byte to %s", rt.Name())
 		}
-		if itype != otype {
-			cnv = func(v reflect.Value) reflect.Value {
-				return v.Convert(otype)
-			}
+		cnv := func(v reflect.Value) reflect.Value {
+			return v.Convert(otype)
 		}
+
 		for i := 0; i < nelmts; i++ {
 			var v byte
-			err = bdec.Decode(&v)
+			err = readByte(r, &v)
 			if err != nil {
 				return fmt.Errorf("fitsio: %v", err)
 			}
@@ -148,17 +152,26 @@ func (img *imageHDU) Read(ptr interface{}) error {
 
 	case 16:
 		itype := reflect.TypeOf((*int16)(nil)).Elem()
+		if itype == otype {
+			slice := rv.Interface().([]int16)
+			for i := 0; i < nelmts; i++ {
+				err = readI16(r, &slice[i])
+				if err != nil {
+					return fmt.Errorf("fitsio: %v", err)
+				}
+			}
+			return nil
+		}
+
 		if !rt.Elem().ConvertibleTo(itype) {
 			return fmt.Errorf("fitsio: can not convert []int16 to %s", rt.Name())
 		}
-		if itype != otype {
-			cnv = func(v reflect.Value) reflect.Value {
-				return v.Convert(otype)
-			}
+		cnv := func(v reflect.Value) reflect.Value {
+			return v.Convert(otype)
 		}
 		for i := 0; i < nelmts; i++ {
 			var v int16
-			err = bdec.Decode(&v)
+			err = readI16(r, &v)
 			if err != nil {
 				return fmt.Errorf("fitsio: %v", err)
 			}
@@ -167,17 +180,26 @@ func (img *imageHDU) Read(ptr interface{}) error {
 
 	case 32:
 		itype := reflect.TypeOf((*int32)(nil)).Elem()
+		if itype == otype {
+			slice := rv.Interface().([]int32)
+			for i := 0; i < nelmts; i++ {
+				err = readI32(r, &slice[i])
+				if err != nil {
+					return fmt.Errorf("fitsio: %v", err)
+				}
+			}
+			return nil
+		}
+
 		if !rt.Elem().ConvertibleTo(itype) {
 			return fmt.Errorf("fitsio: can not convert []int32 to %s", rt.Name())
 		}
-		if itype != otype {
-			cnv = func(v reflect.Value) reflect.Value {
-				return v.Convert(otype)
-			}
+		cnv := func(v reflect.Value) reflect.Value {
+			return v.Convert(otype)
 		}
 		for i := 0; i < nelmts; i++ {
 			var v int32
-			err = bdec.Decode(&v)
+			err = readI32(r, &v)
 			if err != nil {
 				return fmt.Errorf("fitsio: %v", err)
 			}
@@ -186,17 +208,26 @@ func (img *imageHDU) Read(ptr interface{}) error {
 
 	case 64:
 		itype := reflect.TypeOf((*int64)(nil)).Elem()
+		if itype == otype {
+			slice := rv.Interface().([]int64)
+			for i := 0; i < nelmts; i++ {
+				err = readI64(r, &slice[i])
+				if err != nil {
+					return fmt.Errorf("fitsio: %v", err)
+				}
+			}
+			return nil
+		}
+
 		if !rt.Elem().ConvertibleTo(itype) {
 			return fmt.Errorf("fitsio: can not convert []int64 to %s", rt.Name())
 		}
-		if itype != otype {
-			cnv = func(v reflect.Value) reflect.Value {
-				return v.Convert(otype)
-			}
+		cnv := func(v reflect.Value) reflect.Value {
+			return v.Convert(otype)
 		}
 		for i := 0; i < nelmts; i++ {
 			var v int64
-			err = bdec.Decode(&v)
+			err = readI64(r, &v)
 			if err != nil {
 				return fmt.Errorf("fitsio: %v", err)
 			}
@@ -205,17 +236,26 @@ func (img *imageHDU) Read(ptr interface{}) error {
 
 	case -32:
 		itype := reflect.TypeOf((*float32)(nil)).Elem()
+		if itype == otype {
+			slice := rv.Interface().([]float32)
+			for i := 0; i < nelmts; i++ {
+				err = readF32(r, &slice[i])
+				if err != nil {
+					return fmt.Errorf("fitsio: %v", err)
+				}
+			}
+			return nil
+		}
+
 		if !rt.Elem().ConvertibleTo(itype) {
 			return fmt.Errorf("fitsio: can not convert []float32 to %s", rt.Name())
 		}
-		if itype != otype {
-			cnv = func(v reflect.Value) reflect.Value {
-				return v.Convert(otype)
-			}
+		cnv := func(v reflect.Value) reflect.Value {
+			return v.Convert(otype)
 		}
 		for i := 0; i < nelmts; i++ {
 			var v float32
-			err = bdec.Decode(&v)
+			err = readF32(r, &v)
 			if err != nil {
 				return fmt.Errorf("fitsio: %v", err)
 			}
@@ -223,18 +263,27 @@ func (img *imageHDU) Read(ptr interface{}) error {
 		}
 
 	case -64:
-		itype := reflect.TypeOf((*byte)(nil)).Elem()
+		itype := reflect.TypeOf((*float64)(nil)).Elem()
+		if itype == otype {
+			slice := rv.Interface().([]float64)
+			for i := 0; i < nelmts; i++ {
+				err = readF64(r, &slice[i])
+				if err != nil {
+					return fmt.Errorf("fitsio: %v", err)
+				}
+			}
+			return nil
+		}
+
 		if !rt.Elem().ConvertibleTo(itype) {
 			return fmt.Errorf("fitsio: can not convert []float64 to %s", rt.Name())
 		}
-		if itype != otype {
-			cnv = func(v reflect.Value) reflect.Value {
-				return v.Convert(otype)
-			}
+		cnv := func(v reflect.Value) reflect.Value {
+			return v.Convert(otype)
 		}
 		for i := 0; i < nelmts; i++ {
 			var v float64
-			err = bdec.Decode(&v)
+			err = readF64(r, &v)
 			if err != nil {
 				return fmt.Errorf("fitsio: %v", err)
 			}

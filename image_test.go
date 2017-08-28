@@ -574,3 +574,79 @@ func TestImageImage(t *testing.T) {
 		_ = hdu.Image()
 	}()
 }
+
+func BenchmarkImageReadF64_10(b *testing.B)     { benchImageReadF64(b, 10) }
+func BenchmarkImageReadF64_100(b *testing.B)    { benchImageReadF64(b, 100) }
+func BenchmarkImageReadF64_1000(b *testing.B)   { benchImageReadF64(b, 1000) }
+func BenchmarkImageReadF64_10000(b *testing.B)  { benchImageReadF64(b, 10000) }
+func BenchmarkImageReadF64_100000(b *testing.B) { benchImageReadF64(b, 100000) }
+
+func benchImageReadF64(b *testing.B, n int) {
+	fname := genImageF64(b, n)
+	defer os.RemoveAll(fname)
+
+	r, err := os.Open(fname)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer r.Close()
+
+	f, err := Open(r)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer f.Close()
+
+	hdu := f.HDU(0)
+	img := hdu.(Image)
+	raw := make([]float64, 0, n)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		raw = raw[:0]
+		err = img.Read(&raw)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func genImageF64(b *testing.B, n int) string {
+	w, err := ioutil.TempFile("", "go-test-fitsio-")
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer w.Close()
+
+	f, err := Create(w)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer f.Close()
+
+	const bitpix = -64
+	axes := []int{n}
+	data := make([]float64, n)
+	for i := range data {
+		data[i] = float64(i)
+	}
+
+	img := NewImage(bitpix, axes)
+	defer img.Close()
+	err = img.Write(&data)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	err = f.Write(img)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	err = f.Close()
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	return w.Name()
+}
