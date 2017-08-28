@@ -10,8 +10,6 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-
-	"github.com/gonuts/binary"
 )
 
 // Column represents a column in a FITS table
@@ -60,10 +58,7 @@ func (col *Column) readBin(table *Table, icol int, irow int64, ptr interface{}) 
 		beg := table.rowsz*int(irow) + col.offset
 		end := beg + col.dtype.dsize
 		row := table.data[beg:end]
-		buf := bytes.NewBuffer(row)
-		bdec := binary.NewDecoder(buf)
-		bdec.Order = binary.BigEndian
-
+		r := newReader(row)
 		slice := reflect.ValueOf(ptr).Elem()
 		nmax := 0
 
@@ -71,14 +66,8 @@ func (col *Column) readBin(table *Table, icol int, irow int64, ptr interface{}) 
 		case 8:
 			var n int32
 			var offset int32
-			err = bdec.Decode(&n)
-			if err != nil {
-				return fmt.Errorf("fitsio: problem decoding slice 32b-length: %v\n", err)
-			}
-			err = bdec.Decode(&offset)
-			if err != nil {
-				return fmt.Errorf("fitsio: problem decoding slice 32b-offset: %v\n", err)
-			}
+			r.readI32(&n)
+			r.readI32(&offset)
 			beg = int(offset)
 			end = beg + int(n)*int(col.dtype.gotype.Elem().Size())
 			nmax = int(n)
@@ -86,76 +75,245 @@ func (col *Column) readBin(table *Table, icol int, irow int64, ptr interface{}) 
 		case 16:
 			var n int64
 			var offset int64
-			err = bdec.Decode(&n)
-			if err != nil {
-				return fmt.Errorf("fitsio: problem decoding slice 64b-length: %v\n", err)
-			}
-			err = bdec.Decode(&offset)
-			if err != nil {
-				return fmt.Errorf("fitsio: problem decoding slice 64b-offset: %v\n", err)
-			}
+			r.readI64(&n)
+			r.readI64(&offset)
 			beg = int(offset)
 			end = beg + int(n)*int(col.dtype.gotype.Elem().Size())
 			nmax = int(n)
 		}
-
-		buf = bytes.NewBuffer(table.heap[beg:end])
-		bdec = binary.NewDecoder(buf)
-		bdec.Order = binary.BigEndian
-
-		slice.SetLen(0)
-		for i := 0; i < nmax; i++ {
-			vv := reflect.New(rt.Elem())
-			err = bdec.Decode(vv.Interface())
-			if err != nil {
-				return fmt.Errorf("fitsio: problem encoding: %v", err)
-			}
-			slice = reflect.Append(slice, vv.Elem())
+		if slice.Len() < nmax {
+			slice = reflect.MakeSlice(rt, nmax, nmax)
 		}
-		if err != nil {
-			return fmt.Errorf("fitsio: %v\n", err)
+
+		r = newReader(table.heap[beg:end])
+		switch slice := slice.Interface().(type) {
+		case []bool:
+			r.readBools(slice[:nmax])
+
+		case []byte:
+			copy(slice[:nmax], r.p)
+
+		case []int8:
+			r.readI8s(slice[:nmax])
+
+		case []int16:
+			r.readI16s(slice[:nmax])
+
+		case []int32:
+			r.readI32s(slice[:nmax])
+
+		case []int64:
+			r.readI64s(slice[:nmax])
+
+		case []int:
+			r.readInts(slice[:nmax])
+
+		case []uint16:
+			r.readU16s(slice[:nmax])
+
+		case []uint32:
+			r.readU32s(slice[:nmax])
+
+		case []uint64:
+			r.readU64s(slice[:nmax])
+
+		case []uint:
+			r.readUints(slice[:nmax])
+
+		case []float32:
+			r.readF32s(slice[:nmax])
+
+		case []float64:
+			r.readF64s(slice[:nmax])
+
+		case []complex64:
+			r.readC64s(slice[:nmax])
+
+		case []complex128:
+			r.readC128s(slice[:nmax])
+
+		default:
+			panic(fmt.Errorf("fitsio: not implemented %T", slice))
 		}
-		rv := reflect.ValueOf(ptr)
-		rv.Elem().Set(slice)
+		rv.Set(slice)
 
 	case reflect.Array:
 
 		beg := table.rowsz*int(irow) + col.offset
 		end := beg + (col.dtype.dsize * col.dtype.len)
 		row := table.data[beg:end]
-		buf := bytes.NewBuffer(row)
-		bdec := binary.NewDecoder(buf)
-		bdec.Order = binary.BigEndian
+		r := newReader(row)
+		switch slice := rv.Slice(0, rv.Len()).Interface().(type) {
+		case []bool:
+			r.readBools(slice)
 
-		err = bdec.Decode(ptr)
-		if err != nil {
-			return fmt.Errorf("fitsio: %v\n", err)
+		case []byte:
+			copy(slice, r.p)
+
+		case []int8:
+			r.readI8s(slice)
+
+		case []int16:
+			r.readI16s(slice)
+
+		case []int32:
+			r.readI32s(slice)
+
+		case []int64:
+			r.readI64s(slice)
+
+		case []int:
+			r.readInts(slice)
+
+		case []uint16:
+			r.readU16s(slice)
+
+		case []uint32:
+			r.readU32s(slice)
+
+		case []uint64:
+			r.readU64s(slice)
+
+		case []uint:
+			r.readUints(slice)
+
+		case []float32:
+			r.readF32s(slice)
+
+		case []float64:
+			r.readF64s(slice)
+
+		case []complex64:
+			r.readC64s(slice)
+
+		case []complex128:
+			r.readC128s(slice)
+
+		default:
+			panic(fmt.Errorf("fitsio: not implemented %T", slice))
 		}
 
-	case reflect.Bool,
-		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
-		reflect.Float32, reflect.Float64,
-		reflect.Complex64, reflect.Complex128:
-
-		//scalar := true
-		//err = col.decode(table, n, rt, rv, scalar)
+	case reflect.Bool:
 
 		beg := table.rowsz*int(irow) + col.offset
 		end := beg + col.dtype.dsize
-		row := table.data[beg:end]
-		buf := bytes.NewBuffer(row)
-		bdec := binary.NewDecoder(buf)
-		bdec.Order = binary.BigEndian
-		err = bdec.Decode(ptr)
-		if err != nil {
-			return fmt.Errorf("fitsio: %v\n", err)
-		}
+
+		r := newReader(table.data[beg:end])
+		r.readBool(ptr.(*bool))
+
+	case reflect.Int8:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		r := newReader(table.data[beg:end])
+		r.readI8(ptr.(*int8))
+
+	case reflect.Int16:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		r := newReader(table.data[beg:end])
+		r.readI16(ptr.(*int16))
+
+	case reflect.Int32:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		r := newReader(table.data[beg:end])
+		r.readI32(ptr.(*int32))
+
+	case reflect.Int64:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		r := newReader(table.data[beg:end])
+		r.readI64(ptr.(*int64))
+
+	case reflect.Int:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		r := newReader(table.data[beg:end])
+		r.readInt(ptr.(*int))
+
+	case reflect.Uint8:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		r := newReader(table.data[beg:end])
+		r.readU8(ptr.(*uint8))
+
+	case reflect.Uint16:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		r := newReader(table.data[beg:end])
+		r.readU16(ptr.(*uint16))
+
+	case reflect.Uint32:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		r := newReader(table.data[beg:end])
+		r.readU32(ptr.(*uint32))
+
+	case reflect.Uint64:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		r := newReader(table.data[beg:end])
+		r.readU64(ptr.(*uint64))
+
+	case reflect.Uint:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		r := newReader(table.data[beg:end])
+		r.readUint(ptr.(*uint))
+
+	case reflect.Float32:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		r := newReader(table.data[beg:end])
+		r.readF32(ptr.(*float32))
+
+	case reflect.Float64:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		r := newReader(table.data[beg:end])
+		r.readF64(ptr.(*float64))
+
+	case reflect.Complex64:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		r := newReader(table.data[beg:end])
+		r.readC64(ptr.(*complex64))
+
+	case reflect.Complex128:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		r := newReader(table.data[beg:end])
+		r.readC128(ptr.(*complex128))
 
 	case reflect.String:
-
-		//scalar := true
-		//err = col.decode(table, n, rt, rv, scalar)
 
 		beg := table.rowsz*int(irow) + col.offset
 		end := beg + col.dtype.dsize
@@ -204,18 +362,57 @@ func (col *Column) writeBin(table *Table, icol int, irow int64, ptr interface{})
 		}
 
 		{
-			buf := new(bytes.Buffer)
-			buf.Grow(nmax * col.dtype.hsize)
-			benc := binary.NewEncoder(buf)
-			benc.Order = binary.BigEndian
+			w := newWriter(make([]byte, nmax*col.dtype.hsize))
+			switch slice := slice.Interface().(type) {
+			case []bool:
+				w.writeBools(slice)
 
-			for i := 0; i < nmax; i++ {
-				err = benc.Encode(slice.Index(i).Addr().Interface())
-				if err != nil {
-					return fmt.Errorf("fitsio: problem encoding: %v", err)
-				}
+			case []byte:
+				copy(w.p, slice)
+
+			case []int8:
+				w.writeI8s(slice)
+
+			case []int16:
+				w.writeI16s(slice)
+
+			case []int32:
+				w.writeI32s(slice)
+
+			case []int64:
+				w.writeI64s(slice)
+
+			case []int:
+				w.writeInts(slice)
+
+			case []uint16:
+				w.writeU16s(slice)
+
+			case []uint32:
+				w.writeU32s(slice)
+
+			case []uint64:
+				w.writeU64s(slice)
+
+			case []uint:
+				w.writeUints(slice)
+
+			case []float32:
+				w.writeF32s(slice)
+
+			case []float64:
+				w.writeF64s(slice)
+
+			case []complex64:
+				w.writeC64s(slice)
+
+			case []complex128:
+				w.writeC128s(slice)
+
+			default:
+				panic(fmt.Errorf("fitsio: not implemented %T", slice))
 			}
-			table.heap = append(table.heap, buf.Bytes()...)
+			table.heap = append(table.heap, w.bytes()...)
 		}
 
 	case reflect.Array:
@@ -224,26 +421,159 @@ func (col *Column) writeBin(table *Table, icol int, irow int64, ptr interface{})
 		end := beg + (col.dtype.dsize * col.dtype.len)
 
 		w := newWriter(table.data[beg:end])
-		benc := binary.NewEncoder(w)
-		benc.Order = binary.BigEndian
-		err = benc.Encode(ptr)
-		if err != nil {
-			return fmt.Errorf("fitsio: %v\n", err)
+		switch slice := rv.Slice(0, rv.Len()).Interface().(type) {
+		case []bool:
+			w.writeBools(slice)
+
+		case []byte:
+			copy(w.p, slice)
+
+		case []int8:
+			w.writeI8s(slice)
+
+		case []int16:
+			w.writeI16s(slice)
+
+		case []int32:
+			w.writeI32s(slice)
+
+		case []int64:
+			w.writeI64s(slice)
+
+		case []int:
+			w.writeInts(slice)
+
+		case []uint16:
+			w.writeU16s(slice)
+
+		case []uint32:
+			w.writeU32s(slice)
+
+		case []uint64:
+			w.writeU64s(slice)
+
+		case []uint:
+			w.writeUints(slice)
+
+		case []float32:
+			w.writeF32s(slice)
+
+		case []float64:
+			w.writeF64s(slice)
+
+		case []complex64:
+			w.writeC64s(slice)
+
+		case []complex128:
+			w.writeC128s(slice)
+
+		default:
+			panic(fmt.Errorf("fitsio: not implemented %T", slice))
 		}
 
-	case reflect.Bool,
-		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
-		reflect.Float32, reflect.Float64,
-		reflect.Complex64, reflect.Complex128:
+	case reflect.Bool:
 
 		beg := table.rowsz*int(irow) + col.offset
 		end := beg + col.dtype.dsize
 
 		w := newWriter(table.data[beg:end])
-		benc := binary.NewEncoder(w)
-		benc.Order = binary.BigEndian
-		err = benc.Encode(ptr)
+		w.writeBool(rv.Bool())
+
+	case reflect.Int8:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		w := newWriter(table.data[beg:end])
+		w.writeI8(rv.Interface().(int8))
+
+	case reflect.Int16:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		w := newWriter(table.data[beg:end])
+		w.writeI16(rv.Interface().(int16))
+
+	case reflect.Int32:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		w := newWriter(table.data[beg:end])
+		w.writeI32(rv.Interface().(int32))
+
+	case reflect.Int, reflect.Int64:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		w := newWriter(table.data[beg:end])
+		w.writeI64(rv.Int())
+
+	case reflect.Uint8:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		w := newWriter(table.data[beg:end])
+		w.writeU8(rv.Interface().(uint8))
+
+	case reflect.Uint16:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		w := newWriter(table.data[beg:end])
+		w.writeU16(rv.Interface().(uint16))
+
+	case reflect.Uint32:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		w := newWriter(table.data[beg:end])
+		w.writeU32(rv.Interface().(uint32))
+
+	case reflect.Uint, reflect.Uint64:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		w := newWriter(table.data[beg:end])
+		w.writeU64(rv.Uint())
+
+	case reflect.Float32:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		w := newWriter(table.data[beg:end])
+		w.writeF32(rv.Interface().(float32))
+
+	case reflect.Float64:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		w := newWriter(table.data[beg:end])
+		w.writeF64(rv.Interface().(float64))
+
+	case reflect.Complex64:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		w := newWriter(table.data[beg:end])
+		w.writeC64(rv.Interface().(complex64))
+
+	case reflect.Complex128:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		w := newWriter(table.data[beg:end])
+		w.writeC128(rv.Interface().(complex128))
 
 	case reflect.String:
 
