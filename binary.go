@@ -10,72 +10,60 @@ import (
 	"math"
 )
 
-func readByte(r io.Reader, v *byte) error {
-	var buf [1]byte
-	_, err := r.Read(buf[:])
-	if err != nil {
-		return err
-	}
-	*v = buf[0]
-	return nil
+type rbuf struct {
+	p []byte // buffer of data to read from
+	c int    // current position in buffer of data
 }
 
-func readI8(r io.Reader, v *int8) error {
-	var buf [1]byte
-	_, err := r.Read(buf[:])
-	if err != nil {
-		return err
-	}
-	*v = int8(buf[0])
-	return nil
+func newReader(data []byte) *rbuf {
+	return &rbuf{p: data, c: 0}
 }
 
-func readI16(r io.Reader, v *int16) error {
-	var buf [2]byte
-	_, err := r.Read(buf[:])
-	if err != nil {
-		return err
+func (r *rbuf) Read(p []byte) (int, error) {
+	if r.c >= len(r.p) {
+		return 0, io.EOF
 	}
-	*v = int16(binary.BigEndian.Uint16(buf[:]))
-	return nil
+	n := copy(p, r.p[r.c:])
+	r.c += n
+	return n, nil
 }
 
-func readI32(r io.Reader, v *int32) error {
-	var buf [4]byte
-	_, err := r.Read(buf[:])
-	if err != nil {
-		return err
-	}
-	*v = int32(binary.BigEndian.Uint32(buf[:]))
-	return nil
+func (r *rbuf) readByte(v *byte) {
+	*v = r.p[r.c]
+	r.c++
 }
 
-func readI64(r io.Reader, v *int64) error {
-	var buf [8]byte
-	_, err := r.Read(buf[:])
-	if err != nil {
-		return err
-	}
-	*v = int64(binary.BigEndian.Uint64(buf[:]))
-	return nil
+func (r *rbuf) readI8(v *int8) {
+	*v = int8(r.p[r.c])
+	r.c++
 }
 
-func readF32(r io.Reader, v *float32) error {
-	var buf [4]byte
-	_, err := r.Read(buf[:])
-	if err != nil {
-		return err
-	}
-	*v = math.Float32frombits(binary.BigEndian.Uint32(buf[:]))
-	return nil
+func (r *rbuf) readI16(v *int16) {
+	beg := r.c
+	r.c += 2
+	*v = int16(binary.BigEndian.Uint16(r.p[beg:r.c]))
 }
 
-func readF64(r io.Reader, v *float64) error {
-	var buf [8]byte
-	_, err := r.Read(buf[:])
-	if err != nil {
-		return err
-	}
-	*v = math.Float64frombits(binary.BigEndian.Uint64(buf[:]))
-	return nil
+func (r *rbuf) readI32(v *int32) {
+	beg := r.c
+	r.c += 4
+	*v = int32(binary.BigEndian.Uint32(r.p[beg:r.c]))
+}
+
+func (r *rbuf) readI64(v *int64) {
+	beg := r.c
+	r.c += 8
+	*v = int64(binary.BigEndian.Uint64(r.p[beg:r.c]))
+}
+
+func (r *rbuf) readF32(v *float32) {
+	beg := r.c
+	r.c += 4
+	*v = math.Float32frombits(binary.BigEndian.Uint32(r.p[beg:r.c]))
+}
+
+func (r *rbuf) readF64(v *float64) {
+	beg := r.c
+	r.c += 8
+	*v = math.Float64frombits(binary.BigEndian.Uint64(r.p[beg:r.c]))
 }
