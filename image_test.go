@@ -740,3 +740,127 @@ func genImage(b *testing.B, bitpix int, n int) string {
 
 	return w.Name()
 }
+
+func BenchmarkImageWriteI8_10(b *testing.B)     { benchImageWrite(b, 8, 10) }
+func BenchmarkImageWriteI8_100(b *testing.B)    { benchImageWrite(b, 8, 100) }
+func BenchmarkImageWriteI8_1000(b *testing.B)   { benchImageWrite(b, 8, 1000) }
+func BenchmarkImageWriteI8_10000(b *testing.B)  { benchImageWrite(b, 8, 10000) }
+func BenchmarkImageWriteI8_100000(b *testing.B) { benchImageWrite(b, 8, 100000) }
+
+func BenchmarkImageWriteI16_10(b *testing.B)     { benchImageWrite(b, 16, 10) }
+func BenchmarkImageWriteI16_100(b *testing.B)    { benchImageWrite(b, 16, 100) }
+func BenchmarkImageWriteI16_1000(b *testing.B)   { benchImageWrite(b, 16, 1000) }
+func BenchmarkImageWriteI16_10000(b *testing.B)  { benchImageWrite(b, 16, 10000) }
+func BenchmarkImageWriteI16_100000(b *testing.B) { benchImageWrite(b, 16, 100000) }
+
+func BenchmarkImageWriteI32_10(b *testing.B)     { benchImageWrite(b, 32, 10) }
+func BenchmarkImageWriteI32_100(b *testing.B)    { benchImageWrite(b, 32, 100) }
+func BenchmarkImageWriteI32_1000(b *testing.B)   { benchImageWrite(b, 32, 1000) }
+func BenchmarkImageWriteI32_10000(b *testing.B)  { benchImageWrite(b, 32, 10000) }
+func BenchmarkImageWriteI32_100000(b *testing.B) { benchImageWrite(b, 32, 100000) }
+
+func BenchmarkImageWriteI64_10(b *testing.B)     { benchImageWrite(b, 64, 10) }
+func BenchmarkImageWriteI64_100(b *testing.B)    { benchImageWrite(b, 64, 100) }
+func BenchmarkImageWriteI64_1000(b *testing.B)   { benchImageWrite(b, 64, 1000) }
+func BenchmarkImageWriteI64_10000(b *testing.B)  { benchImageWrite(b, 64, 10000) }
+func BenchmarkImageWriteI64_100000(b *testing.B) { benchImageWrite(b, 64, 100000) }
+
+func BenchmarkImageWriteF32_10(b *testing.B)     { benchImageWrite(b, -32, 10) }
+func BenchmarkImageWriteF32_100(b *testing.B)    { benchImageWrite(b, -32, 100) }
+func BenchmarkImageWriteF32_1000(b *testing.B)   { benchImageWrite(b, -32, 1000) }
+func BenchmarkImageWriteF32_10000(b *testing.B)  { benchImageWrite(b, -32, 10000) }
+func BenchmarkImageWriteF32_100000(b *testing.B) { benchImageWrite(b, -32, 100000) }
+
+func BenchmarkImageWriteF64_10(b *testing.B)     { benchImageWrite(b, -64, 10) }
+func BenchmarkImageWriteF64_100(b *testing.B)    { benchImageWrite(b, -64, 100) }
+func BenchmarkImageWriteF64_1000(b *testing.B)   { benchImageWrite(b, -64, 1000) }
+func BenchmarkImageWriteF64_10000(b *testing.B)  { benchImageWrite(b, -64, 10000) }
+func BenchmarkImageWriteF64_100000(b *testing.B) { benchImageWrite(b, -64, 100000) }
+
+func benchImageWrite(b *testing.B, bitpix int, n int) {
+	w, err := ioutil.TempFile("", "go-test-fitsio-")
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer w.Close()
+	defer os.RemoveAll(w.Name())
+
+	f, err := Create(w)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer f.Close()
+
+	var ptr interface{}
+	axes := []int{n}
+	switch bitpix {
+	case 8:
+		data := make([]int8, n)
+		for i := range data {
+			data[i] = int8(i)
+		}
+		ptr = &data
+
+	case 16:
+		data := make([]int16, n)
+		for i := range data {
+			data[i] = int16(i)
+		}
+		ptr = &data
+
+	case 32:
+		data := make([]int32, n)
+		for i := range data {
+			data[i] = int32(i)
+		}
+		ptr = &data
+
+	case 64:
+		data := make([]int64, n)
+		for i := range data {
+			data[i] = int64(i)
+		}
+		ptr = &data
+
+	case -32:
+		data := make([]float32, n)
+		for i := range data {
+			data[i] = float32(i)
+		}
+		ptr = &data
+
+	case -64:
+		data := make([]float64, n)
+		for i := range data {
+			data[i] = float64(i)
+		}
+		ptr = &data
+	default:
+		panic(fmt.Errorf("invalid bitpix=%d", bitpix))
+	}
+
+	img := NewImage(bitpix, axes)
+	defer img.Close()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		err = img.Write(ptr)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+
+	err = f.Write(img)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	err = f.Close()
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	return
+}
