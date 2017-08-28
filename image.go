@@ -122,9 +122,16 @@ func (img *imageHDU) Read(ptr interface{}) error {
 	r := bytes.NewReader(img.raw)
 	switch hdr.Bitpix() {
 	case 8:
-		itype := reflect.TypeOf((*byte)(nil)).Elem()
-		if itype == otype {
-			slice := rv.Interface().([]byte)
+		switch slice := rv.Interface().(type) {
+		case []int8:
+			for i := 0; i < nelmts; i++ {
+				err = readI8(r, &slice[i])
+				if err != nil {
+					return fmt.Errorf("fitsio: %v", err)
+				}
+			}
+			return nil
+		case []byte:
 			for i := 0; i < nelmts; i++ {
 				err = readByte(r, &slice[i])
 				if err != nil {
@@ -134,6 +141,7 @@ func (img *imageHDU) Read(ptr interface{}) error {
 			return nil
 		}
 
+		itype := reflect.TypeOf((*byte)(nil)).Elem()
 		if !rt.Elem().ConvertibleTo(itype) {
 			return fmt.Errorf("fitsio: can not convert []byte to %s", rt.Name())
 		}
