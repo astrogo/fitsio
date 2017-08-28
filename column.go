@@ -336,10 +336,12 @@ func (col *Column) readBin(table *Table, icol int, irow int64, ptr interface{}) 
 
 // writeBin writes the value at column number icol and row irow, from ptr.
 func (col *Column) writeBin(table *Table, icol int, irow int64, ptr interface{}) error {
-	var err error
-
-	rv := reflect.Indirect(reflect.ValueOf(ptr))
-	rt := reflect.TypeOf(rv.Interface())
+	var (
+		err error
+		rv  = reflect.Indirect(reflect.ValueOf(ptr))
+		rvi = rv.Interface()
+		rt  = reflect.TypeOf(rvi)
+	)
 
 	switch rt.Kind() {
 	case reflect.Slice:
@@ -348,8 +350,7 @@ func (col *Column) writeBin(table *Table, icol int, irow int64, ptr interface{})
 		end := beg + col.dtype.dsize
 
 		w := newWriter(table.data[beg:end])
-		slice := reflect.ValueOf(ptr).Elem()
-		nmax := slice.Len()
+		nmax := rv.Len()
 
 		switch col.dtype.dsize {
 		case 8:
@@ -363,7 +364,7 @@ func (col *Column) writeBin(table *Table, icol int, irow int64, ptr interface{})
 
 		{
 			w := newWriter(make([]byte, nmax*col.dtype.hsize))
-			switch slice := slice.Interface().(type) {
+			switch slice := rvi.(type) {
 			case []bool:
 				w.writeBools(slice)
 
@@ -477,7 +478,7 @@ func (col *Column) writeBin(table *Table, icol int, irow int64, ptr interface{})
 		end := beg + col.dtype.dsize
 
 		w := newWriter(table.data[beg:end])
-		w.writeBool(rv.Bool())
+		w.writeBool(rvi.(bool))
 
 	case reflect.Int8:
 
@@ -485,7 +486,7 @@ func (col *Column) writeBin(table *Table, icol int, irow int64, ptr interface{})
 		end := beg + col.dtype.dsize
 
 		w := newWriter(table.data[beg:end])
-		w.writeI8(rv.Interface().(int8))
+		w.writeI8(rvi.(int8))
 
 	case reflect.Int16:
 
@@ -493,7 +494,7 @@ func (col *Column) writeBin(table *Table, icol int, irow int64, ptr interface{})
 		end := beg + col.dtype.dsize
 
 		w := newWriter(table.data[beg:end])
-		w.writeI16(rv.Interface().(int16))
+		w.writeI16(rvi.(int16))
 
 	case reflect.Int32:
 
@@ -501,15 +502,23 @@ func (col *Column) writeBin(table *Table, icol int, irow int64, ptr interface{})
 		end := beg + col.dtype.dsize
 
 		w := newWriter(table.data[beg:end])
-		w.writeI32(rv.Interface().(int32))
+		w.writeI32(rvi.(int32))
 
-	case reflect.Int, reflect.Int64:
+	case reflect.Int64:
 
 		beg := table.rowsz*int(irow) + col.offset
 		end := beg + col.dtype.dsize
 
 		w := newWriter(table.data[beg:end])
-		w.writeI64(rv.Int())
+		w.writeI64(rvi.(int64))
+
+	case reflect.Int:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		w := newWriter(table.data[beg:end])
+		w.writeInt(rvi.(int))
 
 	case reflect.Uint8:
 
@@ -517,7 +526,7 @@ func (col *Column) writeBin(table *Table, icol int, irow int64, ptr interface{})
 		end := beg + col.dtype.dsize
 
 		w := newWriter(table.data[beg:end])
-		w.writeU8(rv.Interface().(uint8))
+		w.writeU8(rvi.(uint8))
 
 	case reflect.Uint16:
 
@@ -525,7 +534,7 @@ func (col *Column) writeBin(table *Table, icol int, irow int64, ptr interface{})
 		end := beg + col.dtype.dsize
 
 		w := newWriter(table.data[beg:end])
-		w.writeU16(rv.Interface().(uint16))
+		w.writeU16(rvi.(uint16))
 
 	case reflect.Uint32:
 
@@ -533,15 +542,23 @@ func (col *Column) writeBin(table *Table, icol int, irow int64, ptr interface{})
 		end := beg + col.dtype.dsize
 
 		w := newWriter(table.data[beg:end])
-		w.writeU32(rv.Interface().(uint32))
+		w.writeU32(rvi.(uint32))
 
-	case reflect.Uint, reflect.Uint64:
+	case reflect.Uint64:
 
 		beg := table.rowsz*int(irow) + col.offset
 		end := beg + col.dtype.dsize
 
 		w := newWriter(table.data[beg:end])
-		w.writeU64(rv.Uint())
+		w.writeU64(rvi.(uint64))
+
+	case reflect.Uint:
+
+		beg := table.rowsz*int(irow) + col.offset
+		end := beg + col.dtype.dsize
+
+		w := newWriter(table.data[beg:end])
+		w.writeUint(rvi.(uint))
 
 	case reflect.Float32:
 
@@ -549,7 +566,7 @@ func (col *Column) writeBin(table *Table, icol int, irow int64, ptr interface{})
 		end := beg + col.dtype.dsize
 
 		w := newWriter(table.data[beg:end])
-		w.writeF32(rv.Interface().(float32))
+		w.writeF32(rvi.(float32))
 
 	case reflect.Float64:
 
@@ -557,7 +574,7 @@ func (col *Column) writeBin(table *Table, icol int, irow int64, ptr interface{})
 		end := beg + col.dtype.dsize
 
 		w := newWriter(table.data[beg:end])
-		w.writeF64(rv.Interface().(float64))
+		w.writeF64(rvi.(float64))
 
 	case reflect.Complex64:
 
@@ -565,7 +582,7 @@ func (col *Column) writeBin(table *Table, icol int, irow int64, ptr interface{})
 		end := beg + col.dtype.dsize
 
 		w := newWriter(table.data[beg:end])
-		w.writeC64(rv.Interface().(complex64))
+		w.writeC64(rvi.(complex64))
 
 	case reflect.Complex128:
 
@@ -573,7 +590,7 @@ func (col *Column) writeBin(table *Table, icol int, irow int64, ptr interface{})
 		end := beg + col.dtype.dsize
 
 		w := newWriter(table.data[beg:end])
-		w.writeC128(rv.Interface().(complex128))
+		w.writeC128(rvi.(complex128))
 
 	case reflect.String:
 

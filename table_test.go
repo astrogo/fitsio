@@ -2168,23 +2168,41 @@ func TestTableMapsRW(t *testing.T) {
 	}
 }
 
-func BenchmarkTableWriteF64s(b *testing.B) {
+func BenchmarkTableWriteF64s_10(b *testing.B)     { benchTableWriteF64s(b, 10) }
+func BenchmarkTableWriteF64s_100(b *testing.B)    { benchTableWriteF64s(b, 100) }
+func BenchmarkTableWriteF64s_1000(b *testing.B)   { benchTableWriteF64s(b, 1000) }
+func BenchmarkTableWriteF64s_10000(b *testing.B)  { benchTableWriteF64s(b, 10000) }
+func BenchmarkTableWriteF64s_100000(b *testing.B) { benchTableWriteF64s(b, 100000) }
+
+func BenchmarkTableWriteF64_10(b *testing.B)     { benchTableWriteF64(b, 10) }
+func BenchmarkTableWriteF64_100(b *testing.B)    { benchTableWriteF64(b, 100) }
+func BenchmarkTableWriteF64_1000(b *testing.B)   { benchTableWriteF64(b, 1000) }
+func BenchmarkTableWriteF64_10000(b *testing.B)  { benchTableWriteF64(b, 10000) }
+func BenchmarkTableWriteF64_100000(b *testing.B) { benchTableWriteF64(b, 100000) }
+
+func benchTableWriteF64s(b *testing.B, n int) {
 	var (
-		data  = []float64{1, 2, 3, 4, 5, 6, 7, 8, 9, 0}
-		cols  = []Column{{Name: "col", Format: "D"}}
+		data  = make([]float64, n)
+		cols  = []Column{{Name: "col", Format: "QD"}}
 		htype = BINARY_TBL
 	)
+
+	for i := range data {
+		data[i] = float64(i)
+	}
 
 	w, err := ioutil.TempFile("", "go-fitsio-test-")
 	if err != nil {
 		b.Fatal(err)
 	}
 	defer w.Close()
+	defer os.RemoveAll(w.Name())
 
 	f, err := Create(w)
 	if err != nil {
 		b.Fatal(err)
 	}
+	defer f.Close()
 
 	phdu, err := NewPrimaryHDU(nil)
 	if err != nil {
@@ -2204,17 +2222,64 @@ func BenchmarkTableWriteF64s(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
-	for j := 0; j < b.N; j++ {
+
+	for i := 0; i < b.N; i++ {
+		err = tbl.Write(data)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func benchTableWriteF64(b *testing.B, n int) {
+	var (
+		data  = make([]float64, n)
+		cols  = []Column{{Name: "col", Format: "D"}}
+		htype = BINARY_TBL
+	)
+
+	for i := range data {
+		data[i] = float64(i)
+	}
+
+	w, err := ioutil.TempFile("", "go-fitsio-test-")
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer w.Close()
+	defer os.RemoveAll(w.Name())
+
+	f, err := Create(w)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer f.Close()
+
+	phdu, err := NewPrimaryHDU(nil)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	err = f.Write(phdu)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	tbl, err := NewTable("test", cols, htype)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer tbl.Close()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
 		for _, v := range data {
 			err = tbl.Write(&v)
 			if err != nil {
 				b.Fatal(err)
 			}
 		}
-	}
-
-	err = f.Write(tbl)
-	if err != nil {
-		b.Fatal(err)
 	}
 }
