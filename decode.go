@@ -61,12 +61,13 @@ func (dec *streamDecoder) DecodeHDU() (HDU, error) {
 	}
 
 	axes := []int{}
+	buf := make([]byte, blockSize)
 
 	iblock := -1
 blocks_loop:
 	for {
 		iblock += 1
-		buf, err := readBlock(dec.r)
+		buf, err = readBlock(buf, dec.r)
 		if err != nil {
 			return nil, err
 		}

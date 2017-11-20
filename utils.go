@@ -25,8 +25,10 @@ import (
 // }
 
 // readBlock reads a full FITS block
-func readBlock(r io.Reader) ([]byte, error) {
-	buf := make([]byte, blockSize)
+func readBlock(buf []byte, r io.Reader) ([]byte, error) {
+	if buf == nil {
+		buf = make([]byte, blockSize)
+	}
 	n, err := r.Read(buf)
 	if err != nil {
 		return nil, err
