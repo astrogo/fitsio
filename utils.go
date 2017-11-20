@@ -7,7 +7,6 @@ package fitsio
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"math/big"
 	"reflect"
 	"strconv"
@@ -23,21 +22,6 @@ import (
 // 	}
 // 	return 0, nil
 // }
-
-// readBlock reads a full FITS block
-func readBlock(buf []byte, r io.Reader) ([]byte, error) {
-	if buf == nil {
-		buf = make([]byte, blockSize)
-	}
-	n, err := r.Read(buf)
-	if err != nil {
-		return nil, err
-	}
-	if n != blockSize {
-		return nil, fmt.Errorf("fitsio: read too few bytes: %d. expected %d", n, blockSize)
-	}
-	return buf, nil
-}
 
 // alignBlock returns a size adjusted to align at a FITS block size
 func alignBlock(sz int) int {

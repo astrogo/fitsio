@@ -67,7 +67,7 @@ func (dec *streamDecoder) DecodeHDU() (HDU, error) {
 blocks_loop:
 	for {
 		iblock += 1
-		buf, err = readBlock(buf, dec.r)
+		_, err = io.ReadFull(dec.r, buf)
 		if err != nil {
 			return nil, err
 		}
