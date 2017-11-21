@@ -12,16 +12,16 @@ import (
 	"strings"
 )
 
+// Decoder is the interface that decodes FITS header/data-units.
 type Decoder interface {
 	DecodeHDU() (HDU, error)
 }
 
 // NewDecoder creates a new Decoder according to the capabilities of the underlying io.Reader
 func NewDecoder(r io.Reader) Decoder {
-	// FIXME(sbinet)
-	// if rr, ok := r.(io.ReadSeeker); ok {
-	// 	return &seekDecoder{r: rr}
-	// }
+	if r, ok := r.(io.ReadSeeker); ok {
+		return &seekDecoder{r: r}
+	}
 	return &streamDecoder{r: r}
 }
 
@@ -35,6 +35,162 @@ func (dec *streamDecoder) DecodeHDU() (HDU, error) {
 	var err error
 	var hdu HDU
 
+	hdr, primary, err := decodeHeader(dec.r)
+	if err != nil {
+		return nil, err
+	}
+
+	switch htype := hdr.Type(); htype {
+	case IMAGE_HDU:
+		var data []byte
+		data, err = loadImageFromReader(dec.r, hdr)
+		if err != nil {
+			return nil, fmt.Errorf("fitsio: error loading image: %v", err)
+		}
+
+		switch primary {
+		case true:
+			hdu = &primaryHDU{
+				imageHDU: imageHDU{
+					hdr: *hdr,
+					buf: data,
+				},
+			}
+		case false:
+			hdu = &imageHDU{
+				hdr: *hdr,
+				buf: data,
+			}
+		}
+
+	case BINARY_TBL:
+		hdu, err = loadTableFromReader(dec.r, hdr, htype)
+		if err != nil {
+			return nil, fmt.Errorf("fitsio: error loading binary table: %v", err)
+		}
+
+	case ASCII_TBL:
+		hdu, err = loadTableFromReader(dec.r, hdr, htype)
+		if err != nil {
+			return nil, fmt.Errorf("fitsio: error loading ascii table: %v", err)
+		}
+
+	case ANY_HDU:
+		fallthrough
+	default:
+		return nil, fmt.Errorf("fitsio: invalid HDU Type (%v)", htype)
+	}
+
+	return hdu, err
+}
+
+// seekDecoder is a decoder which can perform random access into
+// the underlying Reader
+type seekDecoder struct {
+	r io.ReadSeeker
+}
+
+func (dec *seekDecoder) DecodeHDU() (HDU, error) {
+	var err error
+	var hdu HDU
+
+	hdr, primary, err := decodeHeader(dec.r)
+	if err != nil {
+		return nil, err
+	}
+
+	switch htype := hdr.Type(); htype {
+	case IMAGE_HDU:
+		var pos int64
+		pos, err = dec.r.Seek(0, io.SeekCurrent)
+		if err != nil {
+			return nil, fmt.Errorf("fitsio: error getting current file position: %v", err)
+		}
+		r := dec.r
+		load := func() ([]byte, error) {
+			_, err := r.Seek(pos, io.SeekStart)
+			if err != nil {
+				return nil, err
+			}
+			data, err := loadImageFromReader(r, hdr)
+			if err != nil {
+				return nil, fmt.Errorf("fitsio: error loading image: %v", err)
+			}
+			return data, nil
+		}
+
+		switch primary {
+		case true:
+			hdu = &primaryHDU{
+				imageHDU: imageHDU{
+					hdr:  *hdr,
+					load: load,
+				},
+			}
+		case false:
+			hdu = &imageHDU{
+				hdr:  *hdr,
+				load: load,
+			}
+		}
+
+	case BINARY_TBL:
+		hdu, err = loadTableFromReader(dec.r, hdr, htype)
+		if err != nil {
+			return nil, fmt.Errorf("fitsio: error loading binary table: %v", err)
+		}
+
+	case ASCII_TBL:
+		hdu, err = loadTableFromReader(dec.r, hdr, htype)
+		if err != nil {
+			return nil, fmt.Errorf("fitsio: error loading ascii table: %v", err)
+		}
+
+	case ANY_HDU:
+		fallthrough
+	default:
+		return nil, fmt.Errorf("fitsio: invalid HDU Type (%v)", htype)
+	}
+
+	return hdu, err
+}
+
+func hduTypeFrom(cards []Card) (HDUType, bool, error) {
+	var err error
+	var htype HDUType = -1
+	var primary bool
+
+	keys := make([]string, 0, len(cards))
+	for _, card := range cards {
+		keys = append(keys, card.Name)
+		switch card.Name {
+		case "SIMPLE":
+			primary = true
+			return IMAGE_HDU, primary, nil
+		case "XTENSION":
+			str := card.Value.(string)
+			switch str {
+			case "IMAGE":
+				htype = IMAGE_HDU
+			case "TABLE":
+				htype = ASCII_TBL
+			case "BINTABLE":
+				htype = BINARY_TBL
+			case "ANY", "ANY_HDU":
+				htype = ANY_HDU
+			default:
+				return htype, primary, fmt.Errorf("fitsio: invalid 'XTENSION' value: %q", str)
+			}
+
+			return htype, primary, err
+		}
+	}
+
+	return htype, primary, fmt.Errorf("fitsio: invalid header (missing 'SIMPLE' or 'XTENSION' card): keys=%v", keys)
+}
+
+func decodeHeader(r io.Reader) (*Header, bool, error) {
+	var err error
 	cards := make(map[string]int, 30)
 	slice := make([]Card, 0, 1)
 
@@ -67,9 +223,9 @@ func (dec *streamDecoder) DecodeHDU() (HDU, error) {
 blocks_loop:
 	for {
 		iblock += 1
-		_, err = io.ReadFull(dec.r, buf)
+		_, err = io.ReadFull(r, buf)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 
 		// each FITS header block is comprised of up to 36 80-byte lines
@@ -77,7 +233,7 @@ blocks_loop:
 		for i := 0; i < maxlines; i++ {
 			card, err := parseHeaderLine(buf[i*80 : (i+1)*80])
 			if err != nil {
-				return nil, err
+				return nil, false, err
 			}
 			if card.Name == "CONTINUE" {
 				idx := len(slice) - 1
@@ -105,7 +261,7 @@ blocks_loop:
 					k := fmt.Sprintf("NAXIS%d", i+1)
 					c, ok := get_card(k)
 					if !ok {
-						return nil, fmt.Errorf("fitsio: missing '%s' key", k)
+						return nil, false, fmt.Errorf("fitsio: missing '%s' key", k)
 					}
 					axes[i] = c.Value.(int)
 				}
@@ -116,62 +272,21 @@ blocks_loop:
 
 	htype, primary, err := hduTypeFrom(slice)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	bitpix := 0
 	if card, ok := get_card("BITPIX"); ok {
 		bitpix = int(reflect.ValueOf(card.Value).Int())
 	} else {
-		return nil, fmt.Errorf("fitsio: missing 'BITPIX' card")
+		return nil, false, fmt.Errorf("fitsio: missing 'BITPIX' card")
 	}
 
 	hdr := NewHeader(slice, htype, bitpix, axes)
-	switch htype {
-	case IMAGE_HDU:
-		var data []byte
-		data, err = dec.loadImage(hdr)
-		if err != nil {
-			return nil, fmt.Errorf("fitsio: error loading image: %v", err)
-		}
-
-		switch primary {
-		case true:
-			hdu = &primaryHDU{
-				imageHDU: imageHDU{
-					hdr: *hdr,
-					raw: data,
-				},
-			}
-		case false:
-			hdu = &imageHDU{
-				hdr: *hdr,
-				raw: data,
-			}
-		}
-
-	case BINARY_TBL:
-		hdu, err = dec.loadTable(hdr, htype)
-		if err != nil {
-			return nil, fmt.Errorf("fitsio: error loading binary table: %v", err)
-		}
-
-	case ASCII_TBL:
-		hdu, err = dec.loadTable(hdr, htype)
-		if err != nil {
-			return nil, fmt.Errorf("fitsio: error loading ascii table: %v", err)
-		}
-
-	case ANY_HDU:
-		fallthrough
-	default:
-		return nil, fmt.Errorf("fitsio: invalid HDU Type (%v)", htype)
-	}
-
-	return hdu, err
+	return hdr, primary, nil
 }
 
-func (dec *streamDecoder) loadImage(hdr *Header) ([]byte, error) {
+func loadImageFromReader(r io.Reader, hdr *Header) ([]byte, error) {
 	var err error
 	var buf []byte
 
@@ -194,7 +309,7 @@ func (dec *streamDecoder) loadImage(hdr *Header) ([]byte, error) {
 		return buf, nil
 	}
 
-	n, err := io.ReadFull(dec.r, buf)
+	n, err := io.ReadFull(r, buf)
 	if err != nil {
 		return nil, fmt.Errorf("fitsio: error reading buffer: %v", err)
 	}
@@ -205,7 +320,7 @@ func (dec *streamDecoder) loadImage(hdr *Header) ([]byte, error) {
 	// data array is also aligned at 2880-bytes blocks
 	pad := padBlock(n)
 	if pad > 0 {
-		n, err = dec.r.Read(make([]byte, pad))
+		n, err = r.Read(make([]byte, pad))
 		if err != nil {
 			return nil, fmt.Errorf("fitsio: error reading buffer: %v", err)
 		}
@@ -217,7 +332,7 @@ func (dec *streamDecoder) loadImage(hdr *Header) ([]byte, error) {
 	return buf, err
 }
 
-func (dec *streamDecoder) loadTable(hdr *Header, htype HDUType) (*Table, error) {
+func loadTableFromReader(r io.Reader, hdr *Header, htype HDUType) (*Table, error) {
 	var err error
 	var table *Table
 
@@ -247,7 +362,7 @@ func (dec *streamDecoder) loadTable(hdr *Header, htype HDUType) (*Table, error) 
 	blocksz := alignBlock(datasz + heapsz)
 
 	block := make([]byte, blocksz)
-	n, err := io.ReadFull(dec.r, block)
+	n, err := io.ReadFull(r, block)
 	if err != nil {
 		return nil, err
 	}
@@ -395,48 +510,4 @@ func (dec *streamDecoder) loadTable(hdr *Header, htype HDUType) (*Table, error) 
 	}
 
 	return table, err
-}
-
-// seekDecoder is a decoder which can perform random access into
-// the underlying Reader
-type seekDecoder struct {
-	r io.ReadSeeker
-}
-
-func (dec *seekDecoder) DecodeHDU() (HDU, error) {
-	panic("not implemented")
-}
-
-func hduTypeFrom(cards []Card) (HDUType, bool, error) {
-	var err error
-	var htype HDUType = -1
-	var primary bool
-
-	keys := make([]string, 0, len(cards))
-	for _, card := range cards {
-		keys = append(keys, card.Name)
-		switch card.Name {
-		case "SIMPLE":
-			primary = true
-			return IMAGE_HDU, primary, nil
-		case "XTENSION":
-			str := card.Value.(string)
-			switch str {
-			case "IMAGE":
-				htype = IMAGE_HDU
-			case "TABLE":
-				htype = ASCII_TBL
-			case "BINTABLE":
-				htype = BINARY_TBL
-			case "ANY", "ANY_HDU":
-				htype = ANY_HDU
-			default:
-				return htype, primary, fmt.Errorf("fitsio: invalid 'XTENSION' value: %q", str)
-			}
-
-			return htype, primary, err
-		}
-	}
-
-	return htype, primary, fmt.Errorf("fitsio: invalid header (missing 'SIMPLE' or 'XTENSION' card): keys=%v", keys)
 }

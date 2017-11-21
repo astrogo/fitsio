@@ -96,7 +96,7 @@ func NewPrimaryHDU(hdr *Header) (Image, error) {
 	hdu := &primaryHDU{
 		imageHDU{
 			hdr: phdr,
-			raw: make([]byte, 0),
+			buf: nil,
 		},
 	}
 

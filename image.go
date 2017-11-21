@@ -26,7 +26,9 @@ type Image interface {
 // imageHDU is a Header-Data Unit extension holding an image as data payload
 type imageHDU struct {
 	hdr Header
-	raw []byte
+	buf []byte
+
+	load func() ([]byte, error) // lazily load data from disk
 }
 
 // NewImage creates a new Image with bitpix size for the pixels and axes as its axes
@@ -34,7 +36,7 @@ func NewImage(bitpix int, axes []int) *imageHDU {
 	hdr := NewHeader(nil, IMAGE_HDU, bitpix, axes)
 	return &imageHDU{
 		hdr: *hdr,
-		raw: make([]byte, 0),
+		buf: nil,
 	}
 }
 
@@ -73,13 +75,26 @@ func (img *imageHDU) Version() int {
 
 // Raw returns the raw bytes which make the image
 func (img *imageHDU) Raw() []byte {
-	return img.raw
+	return img.raw()
+}
+
+// raw returns the raw bytes from which the image is made
+// or loads them from disk if nil.
+func (img *imageHDU) raw() []byte {
+	if img.buf == nil && img.load != nil {
+		var err error
+		img.buf, err = img.load()
+		if err != nil {
+			panic(err)
+		}
+	}
+	return img.buf
 }
 
 // Read reads the image data into ptr
 func (img *imageHDU) Read(ptr interface{}) error {
 	var err error
-	if img.raw == nil {
+	if img.raw() == nil {
 		// FIXME(sbinet): load data from file
 		panic(fmt.Errorf("image with no raw data"))
 	}
@@ -117,7 +132,7 @@ func (img *imageHDU) Read(ptr interface{}) error {
 		rv.SetLen(nelmts)
 	}
 
-	r := newReader(img.raw)
+	r := newReader(img.buf)
 	switch hdr.Bitpix() {
 	case 8:
 		switch slice := rv.Interface().(type) {
@@ -287,14 +302,14 @@ func (img *imageHDU) Write(data interface{}) error {
 		pixsz = -pixsz
 	}
 
-	img.raw = make([]byte, pixsz*nelmts)
-	w := newWriter(img.raw)
+	img.buf = make([]byte, pixsz*nelmts)
+	w := newWriter(img.buf)
 	switch data := rv.Interface().(type) {
 	case []byte:
 		if hdr.Bitpix() != 8 {
 			return fmt.Errorf("fitsio: got a %T but bitpix!=%d", data, hdr.Bitpix())
 		}
-		copy(img.raw, data)
+		copy(img.buf, data)
 
 	case []int8:
 		if hdr.Bitpix() != 8 {
