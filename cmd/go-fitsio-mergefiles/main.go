@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -107,4 +108,14 @@ Merge FITS tables into a single file/table.
 
 	fmt.Printf("::: merging [%d] FITS files... [done]\n", len(infiles))
 	fmt.Printf("::: nrows: %d\n", table.NumRows())
+
+	err = out.Close()
+	if err != nil {
+		log.Fatalf("could not close output FITS file: %v", err)
+	}
+
+	err = w.Close()
+	if err != nil {
+		log.Fatalf("could not could output file: %v", err)
+	}
 }

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"os"
 
 	fits "github.com/astrogo/fitsio"
@@ -73,7 +74,7 @@ in single quote characters on the Unix command line.
 	defer in.Close()
 
 	// create output file
-	var w io.Writer
+	var w io.WriteCloser
 	if ofname == "-" {
 		w = os.Stdout
 	} else {
@@ -96,5 +97,15 @@ in single quote characters on the Unix command line.
 		if err != nil {
 			panic(err)
 		}
+	}
+
+	err = out.Close()
+	if err != nil {
+		log.Fatalf("could not close output FITS file: %v", err)
+	}
+
+	err = w.Close()
+	if err != nil {
+		log.Fatalf("could not close output file: %v", err)
 	}
 }
