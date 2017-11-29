@@ -21,12 +21,11 @@ const (
 
 // File represents a FITS file.
 type File struct {
-	dec     Decoder
-	enc     Encoder
-	name    string
-	mode    Mode
-	hdus    []HDU
-	closers []io.Closer
+	dec  Decoder
+	enc  Encoder
+	name string
+	mode Mode
+	hdus []HDU
 }
 
 // Open opens a FITS file in read-only mode.
@@ -42,21 +41,10 @@ func Open(r io.Reader) (*File, error) {
 	}
 
 	f := &File{
-		dec:     NewDecoder(r),
-		name:    name,
-		mode:    ReadOnly,
-		hdus:    make([]HDU, 0, 1),
-		closers: make([]io.Closer, 0, 1),
-	}
-
-	defer func() {
-		if err != nil {
-			f.Close()
-		}
-	}()
-
-	if rr, ok := r.(io.Closer); ok {
-		f.closers = append(f.closers, rr)
+		dec:  NewDecoder(r),
+		name: name,
+		mode: ReadOnly,
+		hdus: make([]HDU, 0, 1),
 	}
 
 	for {
@@ -70,7 +58,6 @@ func Open(r io.Reader) (*File, error) {
 			break
 		}
 		f.hdus = append(f.hdus, hdu)
-		f.closers = append(f.closers, hdu)
 	}
 
 	return f, err
@@ -88,31 +75,23 @@ func Create(w io.Writer) (*File, error) {
 	}
 
 	f := &File{
-		enc:     NewEncoder(w),
-		name:    name,
-		mode:    WriteOnly,
-		hdus:    make([]HDU, 0, 1),
-		closers: make([]io.Closer, 0, 1),
-	}
-
-	if ww, ok := w.(io.Closer); ok {
-		f.closers = append(f.closers, ww)
+		enc:  NewEncoder(w),
+		name: name,
+		mode: WriteOnly,
+		hdus: make([]HDU, 0, 1),
 	}
 
 	return f, err
 }
 
-// Close releases resources held by a FITS file
+// Close releases resources held by a FITS file.
+//
+// It does not close the underlying io.Reader or io.Writer.
 func (f *File) Close() error {
-	var err error
-
-	for _, v := range f.closers {
-		err = v.Close()
-		if err != nil {
-			return err
-		}
-	}
-	return err
+	f.enc = nil
+	f.dec = nil
+	f.hdus = nil
+	return nil
 }
 
 // Mode returns the access-mode of this FITS file
@@ -230,6 +209,5 @@ func (f *File) append(hdu HDU) error {
 	}
 
 	f.hdus = append(f.hdus, hdu)
-	f.closers = append(f.closers, hdu)
 	return err
 }
