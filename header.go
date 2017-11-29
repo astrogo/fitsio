@@ -348,3 +348,39 @@ func (hdr *Header) Set(n string, v interface{}, comment string) {
 		card.Comment = comment
 	}
 }
+
+// dataNBytes returns the number of bytes used by the associated data unit.
+func (hdr *Header) dataNBytes() int64 {
+	switch hdr.Type() {
+	case IMAGE_HDU:
+		axes := hdr.Axes()
+		if len(axes) == 0 {
+			return 0
+		}
+		nelmts := 1
+		for _, dim := range axes {
+			nelmts *= dim
+		}
+		pixsz := hdr.Bitpix() / 8
+		if pixsz < 0 {
+			pixsz = -pixsz
+		}
+		n := alignBlock(nelmts * pixsz)
+		return int64(n)
+	case ASCII_TBL, BINARY_TBL:
+		axes := hdr.Axes()
+		rowsz := axes[0]
+		nrows := int64(axes[1])
+		datasz := int(nrows) * rowsz
+		heapsz := 0
+		if card := hdr.Get("PCOUNT"); card != nil && card.Value != nil {
+			heapsz = card.Value.(int)
+		}
+
+		blocksz := alignBlock(datasz + heapsz)
+		return int64(blocksz)
+
+	default:
+		panic("fitsio: invalid HDU type")
+	}
+}

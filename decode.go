@@ -14,6 +14,7 @@ import (
 
 // Decoder is the interface that decodes FITS header/data-units.
 type Decoder interface {
+	// DecodeHDU decodes a full HDU
 	DecodeHDU() (HDU, error)
 }
 
@@ -118,6 +119,10 @@ func (dec *seekDecoder) DecodeHDU() (HDU, error) {
 			}
 			return data, nil
 		}
+		_, err = dec.r.Seek(hdr.dataNBytes(), io.SeekCurrent)
+		if err != nil {
+			return nil, err
+		}
 
 		switch primary {
 		case true:
@@ -139,12 +144,14 @@ func (dec *seekDecoder) DecodeHDU() (HDU, error) {
 		if err != nil {
 			return nil, fmt.Errorf("fitsio: error loading binary table: %v", err)
 		}
+		// TODO(sbinet): lazily load table hdu, and skip associated DU
 
 	case ASCII_TBL:
 		hdu, err = loadTableFromReader(dec.r, hdr, htype)
 		if err != nil {
 			return nil, fmt.Errorf("fitsio: error loading ascii table: %v", err)
 		}
+		// TODO(sbinet): lazily load table hdu, and skip associated DU
 
 	case ANY_HDU:
 		fallthrough
