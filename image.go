@@ -5,8 +5,10 @@
 package fitsio
 
 import (
+	"encoding/binary"
 	"fmt"
 	"image"
+	"math"
 	"reflect"
 
 	"github.com/astrogo/fitsio/fltimg"
@@ -359,7 +361,8 @@ func (img *imageHDU) Image() image.Image {
 	header := img.Header()
 	bitpix := header.Bitpix()
 	axes := header.Axes()
-	raw := img.Raw()
+	raw := make([]byte, len(img.Raw()))
+	copy(raw, img.Raw())
 
 	if len(axes) < 2 {
 		return nil
@@ -374,6 +377,65 @@ func (img *imageHDU) Image() image.Image {
 		return nil
 	case h <= 0:
 		return nil
+	}
+
+	// handle BSCALE/BZERO rescaling header keywords.
+	// see: https://heasarc.gsfc.nasa.gov/docs/fcg/standard_dict.html
+	if bscale, bzero := header.Get("BSCALE"), header.Get("BZERO"); bscale != nil || bzero != nil {
+		scale := 1.0
+		zero := 0.0
+		if bzero != nil {
+			zero = bzero.Value.(float64)
+		}
+		if bscale != nil {
+			scale = bscale.Value.(float64)
+		}
+		switch bitpix {
+		case 8:
+			zero := uint8(zero)
+			scale := uint8(scale)
+			for i, v := range raw {
+				raw[i] = zero + scale*v
+			}
+
+		case 16:
+			zero := uint16(zero)
+			scale := uint16(scale)
+			for i := 0; i < len(raw); i += 2 {
+				v := zero + scale*binary.BigEndian.Uint16(raw[i:i+2])
+				binary.BigEndian.PutUint16(raw[i:i+2], v)
+			}
+
+		case 32:
+			zero := uint32(zero)
+			scale := uint32(scale)
+			for i := 0; i < len(raw); i += 4 {
+				v := zero + scale*binary.BigEndian.Uint32(raw[i:i+4])
+				binary.BigEndian.PutUint32(raw[i:i+4], v)
+			}
+
+		case 64:
+			zero := uint64(zero)
+			scale := uint64(scale)
+			for i := 0; i < len(raw); i += 8 {
+				v := zero + scale*binary.BigEndian.Uint64(raw[i:i+8])
+				binary.BigEndian.PutUint64(raw[i:i+8], v)
+			}
+
+		case -32:
+			zero := float32(zero)
+			scale := float32(scale)
+			for i := 0; i < len(raw); i += 4 {
+				v := zero + scale*math.Float32frombits(binary.BigEndian.Uint32(raw[i:i+4]))
+				binary.BigEndian.PutUint32(raw[i:i+4], math.Float32bits(v))
+			}
+
+		case -64:
+			for i := 0; i < len(raw); i += 8 {
+				v := zero + scale*math.Float64frombits(binary.BigEndian.Uint64(raw[i:i+8]))
+				binary.BigEndian.PutUint64(raw[i:i+8], math.Float64bits(v))
+			}
+		}
 	}
 
 	rect := image.Rect(0, 0, w, h)
