@@ -7,6 +7,7 @@ package fitsio
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"reflect"
 	"strconv"
 	"strings"
@@ -318,21 +319,14 @@ func loadImageFromReader(r io.Reader, hdr *Header) ([]byte, error) {
 
 	n, err := io.ReadFull(r, buf)
 	if err != nil {
-		return nil, fmt.Errorf("fitsio: error reading buffer: %v", err)
-	}
-	if n != len(buf) {
-		return nil, fmt.Errorf("fitsio: read too few bytes (%d). expected %d", n, len(buf))
+		return nil, fmt.Errorf("fitsio: error reading %d bytes (got %d): %v", len(buf), n, err)
 	}
 
 	// data array is also aligned at 2880-bytes blocks
 	pad := padBlock(n)
 	if pad > 0 {
-		n, err = r.Read(make([]byte, pad))
-		if err != nil {
-			return nil, fmt.Errorf("fitsio: error reading buffer: %v", err)
-		}
-		if n != pad {
-			return nil, fmt.Errorf("fitsio: read too few bytes (%d). expected %d", n, len(buf))
+		if n, err := io.CopyN(ioutil.Discard, r, int64(pad)); err != nil {
+			return nil, fmt.Errorf("fitsio: error reading %d bytes (got %d): %v", pad, n, err)
 		}
 	}
 
@@ -371,10 +365,7 @@ func loadTableFromReader(r io.Reader, hdr *Header, htype HDUType) (*Table, error
 	block := make([]byte, blocksz)
 	n, err := io.ReadFull(r, block)
 	if err != nil {
-		return nil, err
-	}
-	if n != len(block) {
-		return nil, fmt.Errorf("fitsio: read too few bytes (%d). expected %d", n, len(block))
+		return nil, fmt.Errorf("fitsio: error reading %d bytes (got %d): %v", len(block), n, err)
 	}
 
 	gapsz := 0
