@@ -203,7 +203,7 @@ func (dec *streamDecoder) loadImage(hdr *Header) ([]byte, error) {
 	// data array is also aligned at 2880-bytes blocks
 	pad := padBlock(n)
 	if pad > 0 {
-		if n, err := io.CopyN(ioutil.Discard, r, int64(pad)); err != nil {
+		if n, err := io.CopyN(ioutil.Discard, dec.r, int64(pad)); err != nil {
 			return nil, fmt.Errorf("fitsio: error reading %d bytes (got %d): %v", pad, n, err)
 		}
 	}
