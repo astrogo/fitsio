@@ -71,12 +71,8 @@ name in single quote characters on the Unix command line.
 		hdr := hdu.Header()
 		fmt.Printf("Header listing for HDU #%d:\n", i)
 
-		for _, n := range hdr.Keys() {
-			card := hdr.Get(n)
-			if card == nil {
-				fmt.Fprintf(os.Stderr, "**error** could not retrieve card [%v]", n)
-				return 1
-			}
+		for k := range hdr.Keys() {
+			card := hdr.Card(k)
 			fmt.Printf(
 				"%-8s= %-29s / %s\n",
 				card.Name,
