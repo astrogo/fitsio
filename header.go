@@ -271,18 +271,25 @@ func (hdr *Header) Clear() {
 // get returns the Card (and its index) with name n if it exists.
 func (hdr *Header) get(n string) (int, *Card) {
 	for i := range hdr.cards {
-		card := &hdr.cards[i]
-		if n == card.Name {
-			return i, card
+		c := &hdr.cards[i]
+		if n == c.Name {
+			return i, c
 		}
 	}
 	return -1, nil
 }
 
 // Get returns the Card with name n or nil if it doesn't exist.
+// If multiple cards with the same name exist, the first one is returned.
 func (hdr *Header) Get(n string) *Card {
 	_, card := hdr.get(n)
 	return card
+}
+
+// Card returns the i-th card.
+// Card panics if the index is out of range.
+func (hdr *Header) Card(i int) *Card {
+	return &hdr.cards[i]
 }
 
 // Comment returns the whole comment string for this Header.
