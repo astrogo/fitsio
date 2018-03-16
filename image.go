@@ -385,10 +385,24 @@ func (img *imageHDU) Image() image.Image {
 		scale := 1.0
 		zero := 0.0
 		if bzero != nil {
-			zero = bzero.Value.(float64)
+			switch v := bzero.Value.(type) {
+			case float64:
+				zero = v
+			case int:
+				zero = float64(v)
+			default:
+				panic("fitsio: handle non-float types for BSCALE and BZERO")
+			}
 		}
 		if bscale != nil {
-			scale = bscale.Value.(float64)
+			switch v := bscale.Value.(type) {
+			case float64:
+				scale = v
+			case int:
+				scale = float64(v)
+			default:
+				panic("fitsio: handle non-float types for BSCALE and BZERO")
+			}
 		}
 		switch bitpix {
 		case 8:
