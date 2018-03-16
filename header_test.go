@@ -592,4 +592,24 @@ func TestMakeHeaderLine(t *testing.T) {
 	}
 }
 
-// EOF
+func TestDuplicateCardKeys(t *testing.T) {
+	r, err := os.Open("testdata/issue-38.fits")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+
+	f, err := Open(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+
+	hdu := f.HDU(0)
+	hdr := hdu.Header()
+	c := hdr.Get("DUP")
+	want := 1
+	if !reflect.DeepEqual(c.Value, want) {
+		t.Fatalf("got %v for duplicate key. want %v (the first one)", c.Value, want)
+	}
+}

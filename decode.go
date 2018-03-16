@@ -40,11 +40,11 @@ func (dec *streamDecoder) DecodeHDU() (HDU, error) {
 	slice := make([]Card, 0, 1)
 
 	get_card := func(k string) (Card, bool) {
-		i, dup := cards[k]
-		if dup {
-			return slice[i], dup
+		i, ok := cards[k]
+		if ok {
+			return slice[i], ok
 		}
-		return Card{}, dup
+		return Card{}, ok
 	}
 
 	add_card := func(c *Card) {
@@ -53,10 +53,14 @@ func (dec *streamDecoder) DecodeHDU() (HDU, error) {
 			slice = append(slice, *c)
 			return
 		}
-		_, dup := cards[n]
-		if dup {
-			panic(fmt.Errorf("fitsio: duplicate keyword [%s]", n))
-		}
+		// For compatibility with C FITSIO, silently swallow duplicate card keys.
+		// See:
+		//  https://github.com/astrogo/fitsio/issues/38
+		//
+		// _, dup := cards[n]
+		// if dup {
+		// 	panic(fmt.Errorf("fitsio: duplicate keyword [%s]", n))
+		// }
 		cards[n] = len(slice)
 		slice = append(slice, *c)
 	}
