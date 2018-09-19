@@ -1,20 +1,34 @@
 language: go
+os:
+  - linux
+
+env:
+ - TAGS="-tags travis"
 
 cache:
  directories:
    - $HOME/.cache/go-build
    - $HOME/gopath/pkg/mod
 
-go:
-  - 1.9.x
-  - 1.10.x
-  - 1.11.x
-  - master
-
 matrix:
  fast_finish: true
  allow_failures:
    - go: master
+ include:
+   - go: 1.9.x
+     env:
+       - TAGS="-tags travis"
+   - go: 1.10.x
+     env:
+       - TAGS="-tags travis"
+   - go: 1.11.x
+     env:
+       - TAGS="-tags travis"
+       - COVERAGE="-cover"
+   - go: master
+     env:
+       - TAGS="-tags travis"
+       - GO111MODULE="on"
 
 sudo: false
 
@@ -27,8 +41,8 @@ notifications:
 
 script:
  - go get -d -t -v ./...
- - go install -v ./...
- - go run ./ci/run-tests.go -race -cover
+ - go install -v $TAGS ./...
+ - go run ./ci/run-tests.go -race $TAGS $COVERAGE
 
 after_success:
  - bash <(curl -s https://codecov.io/bash)
