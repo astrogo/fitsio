@@ -20,3 +20,10 @@ notifications:
     on_success: change
     on_failure: always
 
+script:
+ - go get -d -t -v ./...
+ - go install -v ./...
+ - go run ./ci/run-tests.go -race -cover
+
+after_success:
+ - bash <(curl -s https://codecov.io/bash)

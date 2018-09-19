@@ -2,6 +2,7 @@ fitsio
 ======
 
 [![Build Status](https://travis-ci.org/astrogo/fitsio.svg?branch=master)](https://travis-ci.org/astrogo/fitsio)
+[![codecov](https://codecov.io/gh/astrogo/fitsio/branch/master/graph/badge.svg)](https://codecov.io/gh/astrogo/fitsio)
 [![GoDoc](https://godoc.org/github.com/astrogo/fitsio?status.svg)](https://godoc.org/github.com/astrogo/fitsio)
 
 `fitsio` is a pure-Go package to read and write `FITS` files.
