@@ -269,10 +269,7 @@ func (img *imageHDU) Read(ptr interface{}) error {
 // Write writes the given image data to the HDU
 func (img *imageHDU) Write(data interface{}) error {
 	var err error
-	rv := reflect.ValueOf(data).Elem()
-	if !rv.CanAddr() {
-		return fmt.Errorf("fitsio: %T is not addressable", data)
-	}
+	rv := reflect.Indirect(reflect.ValueOf(data))
 
 	hdr := img.Header()
 	naxes := len(hdr.Axes())
