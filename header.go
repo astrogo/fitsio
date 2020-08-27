@@ -58,7 +58,7 @@ func NewHeader(cards []Card, htype HDUType, bitpix int, axes []int) *Header {
 	}
 
 	if _, ok := keys["NAXIS"]; !ok {
-		cards = append(cards, Card{
+		dcards = append(cards, Card{
 			Name:    "NAXIS",
 			Value:   len(hdr.Axes()),
 			Comment: "number of data axes",
@@ -66,7 +66,7 @@ func NewHeader(cards []Card, htype HDUType, bitpix int, axes []int) *Header {
 		nax := len(hdr.Axes())
 		for i := 0; i < nax; i++ {
 			axis := strconv.Itoa(i + 1) // index from 0, hdu starts at NAXIS1
-			cards = append(cards, Card{
+			dcards = append(cards, Card{
 				Name:    "NAXIS" + axis,
 				Value:   hdr.Axes()[i],
 				Comment: "length of data axis " + axis,
