@@ -83,26 +83,6 @@ func NewPrimaryHDU(hdr *Header) (Image, error) {
 		}
 	}
 
-	if len(hdr.Axes()) >= 1 {
-		if _, ok := keys["NAXIS1"]; !ok {
-			cards = append(cards, Card{
-				Name:    "NAXIS1",
-				Value:   hdr.Axes()[0],
-				Comment: "length of data axis 1",
-			})
-		}
-	}
-
-	if len(hdr.Axes()) >= 2 {
-		if _, ok := keys["NAXIS2"]; !ok {
-			cards = append(cards, Card{
-				Name:    "NAXIS2",
-				Value:   hdr.Axes()[1],
-				Comment: "length of data axis 2",
-			})
-		}
-	}
-
 	phdr := *hdr
 	phdr.cards = append(cards, hdr.cards...)
 	hdu := &primaryHDU{

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"strconv"
 )
 
 // Header describes a Header-Data Unit of a FITS file
@@ -57,29 +58,18 @@ func NewHeader(cards []Card, htype HDUType, bitpix int, axes []int) *Header {
 	}
 
 	if _, ok := keys["NAXIS"]; !ok {
-		dcards = append(dcards, Card{
+		cards = append(cards, Card{
 			Name:    "NAXIS",
 			Value:   len(hdr.Axes()),
 			Comment: "number of data axes",
 		})
-	}
-
-	if len(hdr.Axes()) >= 1 {
-		if _, ok := keys["NAXIS1"]; !ok {
-			dcards = append(dcards, Card{
-				Name:    "NAXIS1",
-				Value:   hdr.Axes()[0],
-				Comment: "length of data axis 1",
-			})
-		}
-	}
-
-	if len(hdr.Axes()) >= 2 {
-		if _, ok := keys["NAXIS2"]; !ok {
-			dcards = append(dcards, Card{
-				Name:    "NAXIS2",
-				Value:   hdr.Axes()[1],
-				Comment: "length of data axis 2",
+		nax := len(hdr.Axes())
+		for i := 0; i < nax; i++ {
+			axis := strconv.Itoa(i + 1) // index from 0, hdu starts at NAXIS1
+			cards = append(cards, Card{
+				Name:    "NAXIS" + axis,
+				Value:   hdr.Axes()[i],
+				Comment: "length of data axis " + axis,
 			})
 		}
 	}
