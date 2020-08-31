@@ -5,6 +5,7 @@
 package fitsio
 
 import (
+	"bytes"
 	"fmt"
 	"image"
 	"image/color"
@@ -367,6 +368,55 @@ func TestImageRW(t *testing.T) {
 	}
 }
 
+func TestImageCubeRoundTrip(t *testing.T) {
+	strides := []int{2, 3, 6} // non repretitive, aperiodic strides
+
+	// the data looks like [0, 1, 2, ...]
+	data := make([]int16, 2*3*6)
+	for i := 0; i < len(data); i++ {
+		data[i] = int16(i - 32768)
+	}
+	var b bytes.Buffer
+	fits, err := Create(&b)
+	if err != nil {
+		t.Error(err)
+	}
+	im := NewImage(16, strides)
+	cards := []Card{
+		{Name: "BZERO", Value: 32768},
+		{Name: "BSCALE", Value: 1.}}
+	im.Header().Append(cards...)
+	err = im.Write(data)
+	if err != nil {
+		t.Error(err)
+	}
+	err = fits.Write(im)
+	if err != nil {
+		t.Error(err)
+	}
+	im.Close()
+	fits.Close()
+
+	// now read back
+	fits, err = Open(&b)
+	hdu0 := fits.HDU(0)
+	// we are not testing anything but NAXIS<N> and the data here
+	img := hdu0.(Image)
+	ax := hdu0.Header().Axes()
+	for i := range ax {
+		if ax[i] != strides[i] {
+			t.Errorf("NAXIS %d value of %d did not match expectation of %d", i, ax[i], strides[i])
+		}
+	}
+	readback := make([]int16, len(data))
+	err = img.Read(&readback)
+	for i := 0; i < len(data); i++ {
+		if data[i] != readback[i] {
+			t.Errorf("pixel %d value of %d did not match expectation %d", i, readback[i], data[i])
+		}
+	}
+
+}
 func TestImageImage(t *testing.T) {
 	const (
 		w = 20
