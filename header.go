@@ -38,6 +38,10 @@ func newHeader(cards []Card, htype HDUType, bitpix int, axes []int) *Header {
 
 // NewHeader creates a new Header from a set of Cards, HDU Type, bitpix and axes.
 func NewHeader(cards []Card, htype HDUType, bitpix int, axes []int) *Header {
+	// short circuit: too many axes violates the FITS standard
+	if len(axes) > 999 {
+		panic(fmt.Sprintf("len(axes) is %d, the FITS standard only allows 999 dims", len(axes)))
+	}
 	hdr := newHeader(cards, htype, bitpix, axes)
 
 	// add (some) mandatory cards (BITPIX, NAXES, AXIS1, AXIS2)
