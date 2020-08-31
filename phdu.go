@@ -4,10 +4,7 @@
 
 package fitsio
 
-import (
-	"reflect"
-	"strconv"
-)
+import "reflect"
 
 type primaryHDU struct {
 	imageHDU
@@ -72,15 +69,6 @@ func NewPrimaryHDU(hdr *Header) (Image, error) {
 			Value:   len(hdr.Axes()),
 			Comment: "number of data axes",
 		})
-		nax := len(hdr.Axes())
-		for i := 0; i < nax; i++ {
-			axis := strconv.Itoa(i + 1) // index from 0, hdu starts at NAXIS1
-			cards = append(cards, Card{
-				Name:    "NAXIS" + axis,
-				Value:   hdr.Axes()[i],
-				Comment: "length of data axis " + axis,
-			})
-		}
 	}
 
 	phdr := *hdr
