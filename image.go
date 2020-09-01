@@ -310,6 +310,13 @@ func (img *imageHDU) Write(data interface{}) error {
 		for _, v := range data {
 			w.writeI16(v)
 		}
+	case []uint16:
+		if hdr.Bitpix() != 16 {
+			return fmt.Errorf("fitsio: got a %T but bitpix!=%d", data, hdr.Bitpix())
+		}
+		for _, v := range data {
+			w.writeU16(v)
+		}
 
 	case []int32:
 		if hdr.Bitpix() != 32 {
@@ -318,6 +325,13 @@ func (img *imageHDU) Write(data interface{}) error {
 		for _, v := range data {
 			w.writeI32(v)
 		}
+	case []uint32:
+		if hdr.Bitpix() != 16 {
+			return fmt.Errorf("fitsio: got a %T but bitpix!=%d", data, hdr.Bitpix())
+		}
+		for _, v := range data {
+			w.writeU32(v)
+		}
 
 	case []int64:
 		if hdr.Bitpix() != 64 {
@@ -325,6 +339,13 @@ func (img *imageHDU) Write(data interface{}) error {
 		}
 		for _, v := range data {
 			w.writeI64(v)
+		}
+	case []uint64:
+		if hdr.Bitpix() != 16 {
+			return fmt.Errorf("fitsio: got a %T but bitpix!=%d", data, hdr.Bitpix())
+		}
+		for _, v := range data {
+			w.writeU64(v)
 		}
 
 	case []float32:
