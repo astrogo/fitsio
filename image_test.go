@@ -889,17 +889,17 @@ func benchImageWrite(b *testing.B, bitpix int, n int) {
 		panic(fmt.Errorf("invalid bitpix=%d", bitpix))
 	}
 
-	img := NewImage(bitpix, axes)
-	defer img.Close()
-
 	b.ReportAllocs()
 	b.ResetTimer()
 
+	var img *imageHDU
 	for i := 0; i < b.N; i++ {
+		img = NewImage(bitpix, axes)
 		err = img.Write(ptr)
 		if err != nil {
 			b.Fatal(err)
 		}
+		img.Close()
 	}
 
 	err = f.Write(img)
