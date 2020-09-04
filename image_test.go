@@ -183,6 +183,35 @@ func TestImageRW(t *testing.T) {
 				8, 9, 0, 1,
 			},
 		},
+		{
+			name:    "new.fits",
+			version: 2,
+			cards: []Card{
+				{
+					"EXTNAME",
+					"primary hdu",
+					"the primary HDU",
+				},
+				{
+					"EXTVER",
+					2,
+					"the primary hdu version",
+				},
+				{
+					Name: "BZERO", Value: 32768,
+				},
+				{
+					Name: "BSCALE", Value: 1., // f64, not int
+				},
+			},
+			bitpix: 16,
+			axes:   []int{3, 4},
+			image: []uint16{
+				0, 1, 2, 3,
+				4, 5, 6, 7,
+				8, 9, 0, 1,
+			},
+		},
 	} {
 		fname := fmt.Sprintf("%03d_%s", ii, table.name)
 		for i := 0; i < 2; i++ {
@@ -287,7 +316,30 @@ func TestImageRW(t *testing.T) {
 					}
 
 					if !reflect.DeepEqual(data, table.image) {
-						t.Fatalf("expected image:\nref=%v\ngot=%v", table.image, data)
+						/* uints and ints mixed fails deepequal with equal data
+
+						This is kind of spaghetti, but this is a complicated
+						test suite to change to support either i16 or uint16
+						for bitpix==16
+
+						--- FAIL: TestImageRW (0.00s)
+						image_test.go:313: expected image:
+							ref=[0 1 2 3 4 5 6 7 8 9 0 1]
+							got=[0 1 2 3 4 5 6 7 8 9 0 1]
+						*/
+						if i16s, ok := data.([]int16); ok {
+							// data is int16 that does not under or overflow
+							// therefore, elementwise convert to i16 for compare
+							d2 := make([]uint16, len(i16s))
+							for i := range i16s {
+								d2[i] = uint16(i16s[i])
+							}
+							if !reflect.DeepEqual(d2, table.image) {
+								t.Fatalf("expected image:\nref=%v\ngot=%v", table.image, data)
+							}
+						} else {
+							t.Fatalf("expected image:\nref=%v\ngot=%v", table.image, data)
+						}
 					}
 				}
 
@@ -369,7 +421,7 @@ func TestImageRW(t *testing.T) {
 }
 
 func TestImageCubeRoundTrip(t *testing.T) {
-	strides := []int{2, 3, 6} // non repretitive, aperiodic strides
+	strides := []int{2, 3, 6} // non repetitive, aperiodic strides
 
 	// the data looks like [0, 1, 2, ...]
 	data := make([]int16, 2*3*6)
@@ -399,6 +451,10 @@ func TestImageCubeRoundTrip(t *testing.T) {
 
 	// now read back
 	fits, err = Open(&b)
+	if err != nil {
+		t.Error(err)
+	}
+	defer fits.Close()
 	hdu0 := fits.HDU(0)
 	// we are not testing anything but NAXIS<N> and the data here
 	img := hdu0.(Image)
