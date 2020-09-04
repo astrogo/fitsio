@@ -40,7 +40,7 @@ func newHeader(cards []Card, htype HDUType, bitpix int, axes []int) *Header {
 func NewHeader(cards []Card, htype HDUType, bitpix int, axes []int) *Header {
 	// short circuit: too many axes violates the FITS standard
 	if len(axes) > 999 {
-		panic(fmt.Sprintf("len(axes) is %d, the FITS standard only allows 999 dims", len(axes)))
+		panic(fmt.Errorf("fitsio: too many axes (got=%d > 999)", len(axes)))
 	}
 	hdr := newHeader(cards, htype, bitpix, axes)
 
