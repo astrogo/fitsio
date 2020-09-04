@@ -970,3 +970,14 @@ func benchImageWrite(b *testing.B, bitpix int, n int) {
 
 	return
 }
+
+func TestPanicWhenNAXISTooLarge(t *testing.T) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Error("expected panic on too many axes")
+		}
+	}()
+	ax := make([]int, 1000)
+	_ = NewImage(32, ax)
+}
