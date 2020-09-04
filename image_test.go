@@ -423,7 +423,6 @@ func TestImageRW(t *testing.T) {
 func TestImageCubeRoundTrip(t *testing.T) {
 	strides := []int{2, 3, 6} // non repetitive, aperiodic strides
 
-	// the data looks like [0, 1, 2, ...]
 	data := make([]int16, 2*3*6)
 	for i := 0; i < len(data); i++ {
 		data[i] = int16(i - 32768)
@@ -436,7 +435,8 @@ func TestImageCubeRoundTrip(t *testing.T) {
 	im := NewImage(16, strides)
 	cards := []Card{
 		{Name: "BZERO", Value: 32768},
-		{Name: "BSCALE", Value: 1.}}
+		{Name: "BSCALE", Value: 1.},
+	}
 	im.Header().Append(cards...)
 	err = im.Write(data)
 	if err != nil {
