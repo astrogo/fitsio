@@ -16,471 +16,482 @@ import (
 func TestTable(t *testing.T) {
 	for _, table := range g_tables {
 		fname := table.fname
-		r, err := os.Open(fname)
-		if err != nil {
-			t.Fatalf("error opening file [%v]: %v", fname, err)
-		}
-		defer r.Close()
-		f, err := Open(r)
-		if err != nil {
-			t.Fatalf("error opening file [%v]: %v", fname, err)
-		}
-		defer f.Close()
-		for i := range f.HDUs() {
-			hdu, ok := f.HDU(i).(*Table)
-			if !ok {
-				continue
+		t.Run(fname, func(t *testing.T) {
+			r, err := os.Open(fname)
+			if err != nil {
+				t.Fatalf("error opening file [%v]: %v", fname, err)
 			}
-			for irow := int64(0); irow < hdu.NumRows(); irow++ {
-				rows, err := hdu.Read(irow, irow+1)
-				if err != nil {
-					t.Fatalf(
-						"error reading row [%v] (fname=%v, table=%v): %v",
-						irow, fname, hdu.Name(), err,
-					)
+			defer r.Close()
+			f, err := Open(r)
+			if err != nil {
+				t.Fatalf("error opening file [%v]: %v", fname, err)
+			}
+			defer f.Close()
+			for i := range f.HDUs() {
+				hdu, ok := f.HDU(i).(*Table)
+				if !ok {
+					continue
 				}
-				rows.Close()
+				for irow := int64(0); irow < hdu.NumRows(); irow++ {
+					rows, err := hdu.Read(irow, irow+1)
+					if err != nil {
+						t.Fatalf(
+							"error reading row [%v] (fname=%v, table=%v): %v",
+							irow, fname, hdu.Name(), err,
+						)
+					}
+					rows.Close()
+				}
 			}
-		}
+		})
 	}
 }
 
 func TestTableNext(t *testing.T) {
 	for _, table := range g_tables {
 		fname := table.fname
-		r, err := os.Open(fname)
-		if err != nil {
-			t.Fatalf("error opening file [%v]: %v", fname, err)
-		}
-		defer r.Close()
-		f, err := Open(r)
-		if err != nil {
-			t.Fatalf("error opening file [%v]: %v", fname, err)
-		}
-		defer f.Close()
+		t.Run(fname, func(t *testing.T) {
+			r, err := os.Open(fname)
+			if err != nil {
+				t.Fatalf("error opening file [%v]: %v", fname, err)
+			}
+			defer r.Close()
+			f, err := Open(r)
+			if err != nil {
+				t.Fatalf("error opening file [%v]: %v", fname, err)
+			}
+			defer f.Close()
 
-		for i := range f.HDUs() {
-			hdu, ok := f.HDU(i).(*Table)
-			if !ok {
-				continue
-			}
+			for i := range f.HDUs() {
+				hdu, ok := f.HDU(i).(*Table)
+				if !ok {
+					continue
+				}
 
-			nrows := hdu.NumRows()
-			// iter over all rows
-			rows, err := hdu.Read(0, nrows)
-			if err != nil {
-				t.Fatalf("table.Read: %v", err)
-			}
-			count := int64(0)
-			for rows.Next() {
-				count++
-			}
-			err = rows.Err()
-			if err != nil {
-				t.Fatalf("rows.Err: %v", err)
-			}
-			if count != nrows {
-				t.Fatalf("rows.Next: expected [%d] rows. got %d.", nrows, count)
-			}
+				nrows := hdu.NumRows()
+				// iter over all rows
+				rows, err := hdu.Read(0, nrows)
+				if err != nil {
+					t.Fatalf("table.Read: %v", err)
+				}
+				count := int64(0)
+				for rows.Next() {
+					count++
+				}
+				err = rows.Err()
+				if err != nil {
+					t.Fatalf("rows.Err: %v", err)
+				}
+				if count != nrows {
+					t.Fatalf("rows.Next: expected [%d] rows. got %d.", nrows, count)
+				}
 
-			// iter over no row
-			rows, err = hdu.Read(0, 0)
-			if err != nil {
-				t.Fatalf("table.Read: %v", err)
-			}
-			count = int64(0)
-			for rows.Next() {
-				count++
-			}
-			err = rows.Err()
-			if err != nil {
-				t.Fatalf("rows.Err: %v", err)
-			}
-			if count != 0 {
-				t.Fatalf("rows.Next: expected [%d] rows. got %d.", 0, count)
-			}
+				// iter over no row
+				rows, err = hdu.Read(0, 0)
+				if err != nil {
+					t.Fatalf("table.Read: %v", err)
+				}
+				count = int64(0)
+				for rows.Next() {
+					count++
+				}
+				err = rows.Err()
+				if err != nil {
+					t.Fatalf("rows.Err: %v", err)
+				}
+				if count != 0 {
+					t.Fatalf("rows.Next: expected [%d] rows. got %d.", 0, count)
+				}
 
-			// iter over 1 row
-			rows, err = hdu.Read(0, 1)
-			if err != nil {
-				t.Fatalf("table.Read: %v", err)
-			}
-			count = int64(0)
-			for rows.Next() {
-				count++
-			}
-			err = rows.Err()
-			if err != nil {
-				t.Fatalf("rows.Err: %v", err)
-			}
-			if count != 1 {
-				t.Fatalf("rows.Next: expected [%d] rows. got %d.", 1, count)
-			}
+				// iter over 1 row
+				rows, err = hdu.Read(0, 1)
+				if err != nil {
+					t.Fatalf("table.Read: %v", err)
+				}
+				count = int64(0)
+				for rows.Next() {
+					count++
+				}
+				err = rows.Err()
+				if err != nil {
+					t.Fatalf("rows.Err: %v", err)
+				}
+				if count != 1 {
+					t.Fatalf("rows.Next: expected [%d] rows. got %d.", 1, count)
+				}
 
-			// iter over all rows
-			rows, err = hdu.Read(0, nrows)
-			if err != nil {
-				t.Fatalf("table.Read: %v", err)
-			}
-			count = int64(0)
-			for rows.Next() {
-				count++
-			}
-			err = rows.Err()
-			if err != nil {
-				t.Fatalf("rows.Err: %v", err)
-			}
-			if count != nrows {
-				t.Fatalf("rows.Next: expected [%d] rows. got %d.", nrows, count)
-			}
+				// iter over all rows
+				rows, err = hdu.Read(0, nrows)
+				if err != nil {
+					t.Fatalf("table.Read: %v", err)
+				}
+				count = int64(0)
+				for rows.Next() {
+					count++
+				}
+				err = rows.Err()
+				if err != nil {
+					t.Fatalf("rows.Err: %v", err)
+				}
+				if count != nrows {
+					t.Fatalf("rows.Next: expected [%d] rows. got %d.", nrows, count)
+				}
 
-			// iter over all rows +1
-			rows, err = hdu.Read(0, nrows+1)
-			if err != nil {
-				t.Fatalf("table.Read: %v", err)
-			}
-			count = int64(0)
-			for rows.Next() {
-				count++
-			}
-			err = rows.Err()
-			if err != nil {
-				t.Fatalf("rows.Err: %v", err)
-			}
-			if count != nrows {
-				t.Fatalf("rows.Next: expected [%d] rows. got %d.", nrows, count)
-			}
+				// iter over all rows +1
+				rows, err = hdu.Read(0, nrows+1)
+				if err != nil {
+					t.Fatalf("table.Read: %v", err)
+				}
+				count = int64(0)
+				for rows.Next() {
+					count++
+				}
+				err = rows.Err()
+				if err != nil {
+					t.Fatalf("rows.Err: %v", err)
+				}
+				if count != nrows {
+					t.Fatalf("rows.Next: expected [%d] rows. got %d.", nrows, count)
+				}
 
-			// iter over all rows -1
-			rows, err = hdu.Read(1, nrows)
-			if err != nil {
-				t.Fatalf("table.Read: %v", err)
-			}
-			count = int64(0)
-			for rows.Next() {
-				count++
-			}
-			err = rows.Err()
-			if err != nil {
-				t.Fatalf("rows.Err: %v", err)
-			}
-			if count != nrows-1 {
-				t.Fatalf("rows.Next: expected [%d] rows. got %d.", nrows-1, count)
-			}
+				// iter over all rows -1
+				rows, err = hdu.Read(1, nrows)
+				if err != nil {
+					t.Fatalf("table.Read: %v", err)
+				}
+				count = int64(0)
+				for rows.Next() {
+					count++
+				}
+				err = rows.Err()
+				if err != nil {
+					t.Fatalf("rows.Err: %v", err)
+				}
+				if count != nrows-1 {
+					t.Fatalf("rows.Next: expected [%d] rows. got %d.", nrows-1, count)
+				}
 
-			// iter over [1,1+maxrows -1)
-			rows, err = hdu.Read(1, nrows-1)
-			if err != nil {
-				t.Fatalf("table.Read: %v", err)
-			}
-			count = int64(0)
-			for rows.Next() {
-				count++
-			}
-			err = rows.Err()
-			if err != nil {
-				t.Fatalf("rows.Err: %v", err)
-			}
-			exp := nrows - 2
-			if exp <= 0 {
-				exp = 0
-			}
-			if count != exp {
-				t.Fatalf("rows.Next: expected [%d] rows. got %d.", exp, count)
-			}
+				// iter over [1,1+maxrows -1)
+				rows, err = hdu.Read(1, nrows-1)
+				if err != nil {
+					t.Fatalf("table.Read: %v", err)
+				}
+				count = int64(0)
+				for rows.Next() {
+					count++
+				}
+				err = rows.Err()
+				if err != nil {
+					t.Fatalf("rows.Err: %v", err)
+				}
+				exp := nrows - 2
+				if exp <= 0 {
+					exp = 0
+				}
+				if count != exp {
+					t.Fatalf("rows.Next: expected [%d] rows. got %d.", exp, count)
+				}
 
-			// iter over last row
-			rows, err = hdu.Read(nrows-1, nrows)
-			if err != nil {
-				t.Fatalf("table.Read: %v", err)
+				// iter over last row
+				rows, err = hdu.Read(nrows-1, nrows)
+				if err != nil {
+					t.Fatalf("table.Read: %v", err)
+				}
+				count = int64(0)
+				for rows.Next() {
+					count++
+				}
+				err = rows.Err()
+				if err != nil {
+					t.Fatalf("rows.Err: %v", err)
+				}
+				if count != 1 {
+					t.Fatalf("rows.Next: expected [%d] rows. got %d.", 1, count)
+				}
 			}
-			count = int64(0)
-			for rows.Next() {
-				count++
-			}
-			err = rows.Err()
-			if err != nil {
-				t.Fatalf("rows.Err: %v", err)
-			}
-			if count != 1 {
-				t.Fatalf("rows.Next: expected [%d] rows. got %d.", 1, count)
-			}
-
-		}
+		})
 	}
 }
 
 func TestTableErrScan(t *testing.T) {
 	for _, table := range g_tables {
 		fname := table.fname
-		// fmt.Printf("--- [%s] ---\n", fname)
-		r, err := os.Open(fname)
-		if err != nil {
-			t.Fatalf("error opening file [%v]: %v", fname, err)
-		}
-		defer r.Close()
-		f, err := Open(r)
-		if err != nil {
-			t.Fatalf("error opening file [%v]: %v", fname, err)
-		}
-		defer f.Close()
-
-		for i := range f.HDUs() {
-			hdu, ok := f.HDU(i).(*Table)
-			if !ok {
-				continue
-			}
-			// fmt.Printf("### [%s][hdu-%d]...\n", hdu.Name(), i)
-			ncols := len(hdu.Cols())
-			nrows := hdu.NumRows()
-			rows, err := hdu.Read(0, nrows)
+		t.Run(fname, func(t *testing.T) {
+			// fmt.Printf("--- [%s] ---\n", fname)
+			r, err := os.Open(fname)
 			if err != nil {
-				t.Fatalf("table.Read: %v", err)
+				t.Fatalf("error opening file [%v]: %v", fname, err)
 			}
-			defer rows.Close()
-
-			count := int64(0)
-			data := make([]interface{}, ncols)
-			for i, col := range hdu.Cols() {
-				// fmt.Printf(">>> col[%d] %q\n", i, col.Name)
-				data[i] = reflect.New(col.Type()).Interface()
+			defer r.Close()
+			f, err := Open(r)
+			if err != nil {
+				t.Fatalf("error opening file [%v]: %v", fname, err)
 			}
+			defer f.Close()
 
-			for rows.Next() {
-				count++
-				err = rows.Scan(data...)
+			for i := range f.HDUs() {
+				hdu, ok := f.HDU(i).(*Table)
+				if !ok {
+					continue
+				}
+				// fmt.Printf("### [%s][hdu-%d]...\n", hdu.Name(), i)
+				ncols := len(hdu.Cols())
+				nrows := hdu.NumRows()
+				rows, err := hdu.Read(0, nrows)
 				if err != nil {
-					t.Fatalf("rows.Scan: error: %v", err)
+					t.Fatalf("table.Read: %v", err)
+				}
+				defer rows.Close()
+
+				count := int64(0)
+				data := make([]interface{}, ncols)
+				for i, col := range hdu.Cols() {
+					// fmt.Printf(">>> col[%d] %q\n", i, col.Name)
+					data[i] = reflect.New(col.Type()).Interface()
 				}
 
-				dummy := 0
-				err = rows.Scan(&dummy) // none of the tables has only 1 field
-				if err == nil {
-					t.Fatalf("rows.Scan: expected a failure")
+				for rows.Next() {
+					count++
+					err = rows.Scan(data...)
+					if err != nil {
+						t.Fatalf("rows.Scan: error: %v", err)
+					}
+
+					dummy := 0
+					err = rows.Scan(&dummy) // none of the tables has only 1 field
+					if err == nil {
+						t.Fatalf("rows.Scan: expected a failure")
+					}
+				}
+				err = rows.Err()
+				if err != nil {
+					t.Fatalf("rows.Err: %v", err)
+				}
+				if count != nrows {
+					t.Fatalf("rows.Next: expected [%d] rows. got %d.", nrows, count)
 				}
 			}
-			err = rows.Err()
-			if err != nil {
-				t.Fatalf("rows.Err: %v", err)
-			}
-			if count != nrows {
-				t.Fatalf("rows.Next: expected [%d] rows. got %d.", nrows, count)
-			}
-		}
+		})
 	}
 }
 
 func TestTableScan(t *testing.T) {
 	for _, table := range g_tables {
 		fname := table.fname
-		// fmt.Printf(">>> fname=%q\n", fname)
-		r, err := os.Open(fname)
-		if err != nil {
-			t.Fatalf("error opening file [%v]: %v", fname, err)
-		}
-		defer r.Close()
-		f, err := Open(r)
-		if err != nil {
-			t.Fatalf("error opening file [%v]: %v", fname, err)
-		}
-		defer f.Close()
+		t.Run(fname, func(t *testing.T) {
+			// fmt.Printf(">>> fname=%q\n", fname)
+			r, err := os.Open(fname)
+			if err != nil {
+				t.Fatalf("error opening file [%v]: %v", fname, err)
+			}
+			defer r.Close()
+			f, err := Open(r)
+			if err != nil {
+				t.Fatalf("error opening file [%v]: %v", fname, err)
+			}
+			defer f.Close()
 
-		for i := range f.HDUs() {
-			hdu, ok := f.HDU(i).(*Table)
-			if !ok {
-				continue
-			}
-			nrows := hdu.NumRows()
-			rows, err := hdu.Read(0, nrows)
-			if err != nil {
-				t.Fatalf("table.Read: %v", err)
-			}
-			count := int64(0)
-			for rows.Next() {
-				ref := make([]interface{}, len(table.tuple[i][count]))
-				data := make([]interface{}, len(ref))
-				for ii, vv := range table.tuple[i][count] {
-					rt := reflect.TypeOf(vv)
-					rv := reflect.New(rt)
-					xx := rv.Interface()
-					data[ii] = xx
-					ref[ii] = vv
+			for i := range f.HDUs() {
+				hdu, ok := f.HDU(i).(*Table)
+				if !ok {
+					continue
 				}
-				err = rows.Scan(data...)
+				nrows := hdu.NumRows()
+				rows, err := hdu.Read(0, nrows)
 				if err != nil {
-					t.Fatalf("rows.Scan: %v", err)
+					t.Fatalf("table.Read: %v", err)
 				}
-				// check data just read in is ok
-				for ii, vv := range data {
-					rv := reflect.ValueOf(vv).Elem().Interface()
-					if !reflect.DeepEqual(rv, ref[ii]) {
-						t.Fatalf("rows.Scan(%s):\nexpected=%v\ngot=%v", fname, ref[ii], rv)
+				count := int64(0)
+				for rows.Next() {
+					ref := make([]interface{}, len(table.tuple[i][count]))
+					data := make([]interface{}, len(ref))
+					for ii, vv := range table.tuple[i][count] {
+						rt := reflect.TypeOf(vv)
+						rv := reflect.New(rt)
+						xx := rv.Interface()
+						data[ii] = xx
+						ref[ii] = vv
 					}
+					err = rows.Scan(data...)
+					if err != nil {
+						t.Fatalf("rows.Scan: %v", err)
+					}
+					// check data just read in is ok
+					for ii, vv := range data {
+						rv := reflect.ValueOf(vv).Elem().Interface()
+						if !reflect.DeepEqual(rv, ref[ii]) {
+							t.Fatalf("rows.Scan(%s):\nexpected=%v\ngot=%v", fname, ref[ii], rv)
+						}
+					}
+					count++
 				}
-				count++
+				err = rows.Err()
+				if err != nil {
+					t.Fatalf("rows.Err: %v", err)
+				}
+				if count != nrows {
+					t.Fatalf("rows.Next: expected [%d] rows. got %d.", nrows, count)
+				}
 			}
-			err = rows.Err()
-			if err != nil {
-				t.Fatalf("rows.Err: %v", err)
-			}
-			if count != nrows {
-				t.Fatalf("rows.Next: expected [%d] rows. got %d.", nrows, count)
-			}
-		}
+		})
 	}
 }
 
 func TestTableScanMap(t *testing.T) {
 	for _, table := range g_tables {
 		fname := table.fname
-		r, err := os.Open(fname)
-		if err != nil {
-			t.Fatalf("error opening file [%v]: %v", fname, err)
-		}
-		defer r.Close()
-		f, err := Open(r)
-		if err != nil {
-			t.Fatalf("error opening file [%v]: %v", fname, err)
-		}
-		defer f.Close()
+		t.Run(fname, func(t *testing.T) {
+			r, err := os.Open(fname)
+			if err != nil {
+				t.Fatalf("error opening file [%v]: %v", fname, err)
+			}
+			defer r.Close()
+			f, err := Open(r)
+			if err != nil {
+				t.Fatalf("error opening file [%v]: %v", fname, err)
+			}
+			defer f.Close()
 
-		for i := range f.HDUs() {
-			hdu, ok := f.HDU(i).(*Table)
-			if !ok {
-				continue
-			}
-			refmap := table.maps[i]
-			if len(refmap) <= 0 {
-				continue
-			}
-			nrows := hdu.NumRows()
-			rows, err := hdu.Read(0, nrows)
-			if err != nil {
-				t.Fatalf("table.Read: %v", err)
-			}
-			count := int64(0)
-			for rows.Next() {
-				ref := make(map[string]interface{}, len(refmap))
-				data := make(map[string]interface{}, len(refmap))
-				for kk, vv := range table.maps[i] {
-					rt := reflect.TypeOf(vv)
-					rv := reflect.New(rt)
-					xx := rv.Interface()
-					data[kk] = xx
-					ii := hdu.Index(kk)
-					if ii < 0 {
-						for _, col := range hdu.cols {
-							fmt.Printf(">>> %q\n", col.Name)
-						}
-						t.Fatalf("could not find index of [%v]\n%v", kk, hdu.colidx)
-					}
-					ref[kk] = table.tuple[i][count][ii]
+			for i := range f.HDUs() {
+				hdu, ok := f.HDU(i).(*Table)
+				if !ok {
+					continue
 				}
-				err = rows.Scan(&data)
+				refmap := table.maps[i]
+				if len(refmap) <= 0 {
+					continue
+				}
+				nrows := hdu.NumRows()
+				rows, err := hdu.Read(0, nrows)
 				if err != nil {
-					t.Fatalf("rows.Scan: %v", err)
+					t.Fatalf("table.Read: %v", err)
 				}
-				// check data just read in is ok
-				datakeys := make([]string, 0, len(data))
-				for k := range data {
-					datakeys = append(datakeys, k)
-				}
-				refkeys := make([]string, 0, len(ref))
-				for k := range ref {
-					refkeys = append(refkeys, k)
-				}
-				sort.Strings(datakeys)
-				sort.Strings(refkeys)
-				if !reflect.DeepEqual(refkeys, datakeys) {
-					t.Fatalf("rows.Scan:\nexpected=%v\ngot=%v", refkeys, datakeys)
-				}
-				for _, k := range refkeys {
-					refval := ref[k]
-					//dataval := reflect.ValueOf(data[k]).Elem().Interface()
-					dataval := data[k]
-					if !reflect.DeepEqual(dataval, refval) {
-						t.Fatalf("rows.Scan (key=%s):\nexpected=%v\ngot=%v", k, refval, dataval)
+				count := int64(0)
+				for rows.Next() {
+					ref := make(map[string]interface{}, len(refmap))
+					data := make(map[string]interface{}, len(refmap))
+					for kk, vv := range table.maps[i] {
+						rt := reflect.TypeOf(vv)
+						rv := reflect.New(rt)
+						xx := rv.Interface()
+						data[kk] = xx
+						ii := hdu.Index(kk)
+						if ii < 0 {
+							for _, col := range hdu.cols {
+								fmt.Printf(">>> %q\n", col.Name)
+							}
+							t.Fatalf("could not find index of [%v]\n%v", kk, hdu.colidx)
+						}
+						ref[kk] = table.tuple[i][count][ii]
 					}
+					err = rows.Scan(&data)
+					if err != nil {
+						t.Fatalf("rows.Scan: %v", err)
+					}
+					// check data just read in is ok
+					datakeys := make([]string, 0, len(data))
+					for k := range data {
+						datakeys = append(datakeys, k)
+					}
+					refkeys := make([]string, 0, len(ref))
+					for k := range ref {
+						refkeys = append(refkeys, k)
+					}
+					sort.Strings(datakeys)
+					sort.Strings(refkeys)
+					if !reflect.DeepEqual(refkeys, datakeys) {
+						t.Fatalf("rows.Scan:\nexpected=%v\ngot=%v", refkeys, datakeys)
+					}
+					for _, k := range refkeys {
+						refval := ref[k]
+						//dataval := reflect.ValueOf(data[k]).Elem().Interface()
+						dataval := data[k]
+						if !reflect.DeepEqual(dataval, refval) {
+							t.Fatalf("rows.Scan (key=%s):\nexpected=%v\ngot=%v", k, refval, dataval)
+						}
+					}
+					count++
 				}
-				count++
+				err = rows.Err()
+				if err != nil {
+					t.Fatalf("rows.Err: %v", err)
+				}
+				if count != nrows {
+					t.Fatalf("rows.Next: expected [%d] rows. got %d.", nrows, count)
+				}
 			}
-			err = rows.Err()
-			if err != nil {
-				t.Fatalf("rows.Err: %v", err)
-			}
-			if count != nrows {
-				t.Fatalf("rows.Next: expected [%d] rows. got %d.", nrows, count)
-			}
-		}
+		})
 	}
 }
 
 func TestTableScanStruct(t *testing.T) {
 	for _, table := range g_tables {
 		fname := table.fname
-		r, err := os.Open(fname)
-		if err != nil {
-			t.Fatalf("error opening file [%v]: %v", fname, err)
-		}
-		defer r.Close()
-
-		f, err := Open(r)
-		if err != nil {
-			t.Fatalf("error opening file [%v]: %v", fname, err)
-		}
-		defer f.Close()
-
-		for i := range f.HDUs() {
-			hdu, ok := f.HDU(i).(*Table)
-			if !ok {
-				continue
-			}
-			reftypes := table.types[i]
-			if reftypes == nil {
-				continue
-			}
-			reftype := reflect.TypeOf(reftypes)
-			nrows := hdu.NumRows()
-			rows, err := hdu.Read(0, nrows)
+		t.Run(fname, func(t *testing.T) {
+			r, err := os.Open(fname)
 			if err != nil {
-				t.Fatalf("table.Read: %v", err)
+				t.Fatalf("error opening file [%v]: %v", fname, err)
 			}
-			count := int64(0)
-			for rows.Next() {
-				ref := reflect.New(reftype)
-				data := reflect.New(reftype)
-				for ii := 0; ii < reftype.NumField(); ii++ {
-					ft := reftype.Field(ii)
-					kk := ft.Tag.Get("fits")
-					if kk == "" {
-						kk = ft.Name
-					}
-					idx := hdu.Index(kk)
-					if idx < 0 {
-						t.Fatalf("could not find index of [%v.%v]", reftype.Name(), ft.Name)
-					}
-					vv := reflect.ValueOf(table.tuple[i][count][idx])
-					reflect.Indirect(ref).Field(ii).Set(vv)
-				}
+			defer r.Close()
 
-				err = rows.Scan(data.Interface())
+			f, err := Open(r)
+			if err != nil {
+				t.Fatalf("error opening file [%v]: %v", fname, err)
+			}
+			defer f.Close()
+
+			for i := range f.HDUs() {
+				hdu, ok := f.HDU(i).(*Table)
+				if !ok {
+					continue
+				}
+				reftypes := table.types[i]
+				if reftypes == nil {
+					continue
+				}
+				reftype := reflect.TypeOf(reftypes)
+				nrows := hdu.NumRows()
+				rows, err := hdu.Read(0, nrows)
 				if err != nil {
-					t.Fatalf("rows.Scan: %v", err)
+					t.Fatalf("table.Read: %v", err)
 				}
-				// check data just read in is ok
-				if !reflect.DeepEqual(data.Interface(), ref.Interface()) {
-					t.Fatalf("rows.Scan:\nexpected=%v\ngot=%v", ref, data)
+				count := int64(0)
+				for rows.Next() {
+					ref := reflect.New(reftype)
+					data := reflect.New(reftype)
+					for ii := 0; ii < reftype.NumField(); ii++ {
+						ft := reftype.Field(ii)
+						kk := ft.Tag.Get("fits")
+						if kk == "" {
+							kk = ft.Name
+						}
+						idx := hdu.Index(kk)
+						if idx < 0 {
+							t.Fatalf("could not find index of [%v.%v]", reftype.Name(), ft.Name)
+						}
+						vv := reflect.ValueOf(table.tuple[i][count][idx])
+						reflect.Indirect(ref).Field(ii).Set(vv)
+					}
+
+					err = rows.Scan(data.Interface())
+					if err != nil {
+						t.Fatalf("rows.Scan: %v", err)
+					}
+					// check data just read in is ok
+					if !reflect.DeepEqual(data.Interface(), ref.Interface()) {
+						t.Fatalf("rows.Scan:\nexpected=%v\ngot=%v", ref, data)
+					}
+					count++
 				}
-				count++
+				err = rows.Err()
+				if err != nil {
+					t.Fatalf("rows.Err: %v", err)
+				}
+				if count != nrows {
+					t.Fatalf("rows.Next: expected [%d] rows. got %d.", nrows, count)
+				}
 			}
-			err = rows.Err()
-			if err != nil {
-				t.Fatalf("rows.Err: %v", err)
-			}
-			if count != nrows {
-				t.Fatalf("rows.Next: expected [%d] rows. got %d.", nrows, count)
-			}
-		}
+		})
 	}
 }
 
@@ -510,7 +521,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 		table interface{}
 	}{
 		{
-			name: "new.fits",
+			name: "txt-i8",
 			cols: []Column{
 				{
 					Name:   "int8s",
@@ -525,7 +536,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "txt-i16",
 			cols: []Column{
 				{
 					Name:   "int16s",
@@ -540,7 +551,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "txt-i32",
 			cols: []Column{
 				{
 					Name:   "int32s",
@@ -555,7 +566,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "txt-i64",
 			cols: []Column{
 				{
 					Name:   "int64s",
@@ -570,7 +581,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "txt-ii",
 			cols: []Column{
 				{
 					Name:   "ints",
@@ -585,7 +596,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "txt-u8",
 			cols: []Column{
 				{
 					Name:   "uint8s",
@@ -600,7 +611,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "txt-u16",
 			cols: []Column{
 				{
 					Name:   "uint16s",
@@ -615,7 +626,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "txt-u32",
 			cols: []Column{
 				{
 					Name:   "uint32s",
@@ -630,7 +641,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "txt-u64",
 			cols: []Column{
 				{
 					Name:   "uint64s",
@@ -645,7 +656,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "txt-uu",
 			cols: []Column{
 				{
 					Name:   "uints",
@@ -660,7 +671,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "txt-f32",
 			cols: []Column{
 				{
 					Name:   "float32s",
@@ -675,7 +686,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "txt-f64",
 			cols: []Column{
 				{
 					Name:   "float64s",
@@ -690,7 +701,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "txt-str",
 			cols: []Column{
 				{
 					Name:   "strings",
@@ -706,7 +717,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 		},
 		// binary table
 		{
-			name: "new.fits",
+			name: "bin-b",
 			cols: []Column{
 				{
 					Name:   "bools",
@@ -722,7 +733,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-i8",
 			cols: []Column{
 				{
 					Name:   "int8s",
@@ -737,7 +748,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-i16",
 			cols: []Column{
 				{
 					Name:   "int16s",
@@ -752,7 +763,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-i32",
 			cols: []Column{
 				{
 					Name:   "int32s",
@@ -767,7 +778,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-i64",
 			cols: []Column{
 				{
 					Name:   "int64s",
@@ -782,7 +793,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-ii",
 			cols: []Column{
 				{
 					Name:   "ints",
@@ -797,7 +808,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-u8",
 			cols: []Column{
 				{
 					Name:   "uint8s",
@@ -812,7 +823,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-u16",
 			cols: []Column{
 				{
 					Name:   "uint16s",
@@ -827,7 +838,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-u32",
 			cols: []Column{
 				{
 					Name:   "uint32s",
@@ -842,7 +853,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-u64",
 			cols: []Column{
 				{
 					Name:   "uint64s",
@@ -857,7 +868,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-uu",
 			cols: []Column{
 				{
 					Name:   "uints",
@@ -872,7 +883,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-f32",
 			cols: []Column{
 				{
 					Name:   "float32s",
@@ -887,7 +898,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-f64",
 			cols: []Column{
 				{
 					Name:   "float64s",
@@ -902,7 +913,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-c64",
 			cols: []Column{
 				{
 					Name:   "cplx64s",
@@ -920,7 +931,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-c128",
 			cols: []Column{
 				{
 					Name:   "cplx128s",
@@ -935,7 +946,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-10str",
 			cols: []Column{
 				{
 					Name:   "strings",
@@ -950,7 +961,7 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-f64-2d",
 			cols: []Column{
 				{
 					Name:   "float64s",
@@ -968,109 +979,111 @@ func TestTableBuiltinsRW(t *testing.T) {
 			},
 		},
 	} {
-		fname := fmt.Sprintf("%03d_%s", ii, table.name)
-		for _, fct := range []func(){
-			// create
-			func() {
-				w, err := os.Create(fname)
-				if err != nil {
-					t.Fatalf("error creating new file [%v]: %v", fname, err)
-				}
-				defer w.Close()
-
-				f, err := Create(w)
-				if err != nil {
-					t.Fatalf("error creating new file [%v]: %v", fname, err)
-				}
-				defer f.Close()
-
-				phdu, err := NewPrimaryHDU(nil)
-				if err != nil {
-					t.Fatalf("error creating new primary hdu [%v]: %v", fname, err)
-				}
-				err = f.Write(phdu)
-				if err != nil {
-					t.Fatalf("error writing primary hdu [%v]: %v", fname, err)
-				}
-
-				tbl, err := NewTable("test", table.cols, table.htype)
-				if err != nil {
-					t.Fatalf("error creating new table: %v (%v)", err, table.cols[0].Name)
-				}
-				defer tbl.Close()
-
-				rslice := reflect.ValueOf(table.table)
-				for i := 0; i < rslice.Len(); i++ {
-					data := rslice.Index(i).Addr()
-					err = tbl.Write(data.Interface())
+		fname := fmt.Sprintf("%03d_%s.fits", ii, table.name)
+		t.Run(fname, func(t *testing.T) {
+			for _, fct := range []func(){
+				// create
+				func() {
+					w, err := os.Create(fname)
 					if err != nil {
-						t.Fatalf("error writing row [%v]: %v (data=%v %T)", i, err, data.Interface(), data.Interface())
+						t.Fatalf("error creating new file [%v]: %v", fname, err)
 					}
-				}
+					defer w.Close()
 
-				nrows := tbl.NumRows()
-				if nrows != int64(rslice.Len()) {
-					t.Fatalf("expected num rows [%v]. got [%v] (%v)", rslice.Len(), nrows, table.cols[0].Name)
-				}
-
-				err = f.Write(tbl)
-				if err != nil {
-					t.Fatalf("error writing table: %v", err)
-				}
-			},
-			// read
-			func() {
-				r, err := os.Open(fname)
-				if err != nil {
-					t.Fatalf("error opening file [%v]: %v", fname, err)
-				}
-				defer r.Close()
-				f, err := Open(r)
-				if err != nil {
-					b, _ := ioutil.ReadFile(fname)
-					t.Fatalf("error opening file [%v]: %v\n%q", fname, err, string(b))
-				}
-				defer f.Close()
-
-				hdu := f.HDU(1)
-				tbl := hdu.(*Table)
-				if tbl.Name() != "test" {
-					t.Fatalf("expected table name==%q. got %q", "test", tbl.Name())
-				}
-
-				rslice := reflect.ValueOf(table.table)
-				nrows := tbl.NumRows()
-				if nrows != int64(rslice.Len()) {
-					t.Fatalf("expected num rows [%v]. got [%v]", rslice.Len(), nrows)
-				}
-
-				rows, err := tbl.Read(0, nrows)
-				if err != nil {
-					t.Fatalf("table.Read: %v", err)
-				}
-				count := int64(0)
-				for rows.Next() {
-					ref := rslice.Index(int(count)).Interface()
-					rt := reflect.TypeOf(ref)
-					ptr := reflect.New(rt)
-					err = rows.Scan(ptr.Interface())
+					f, err := Create(w)
 					if err != nil {
-						t.Fatalf("rows.Scan: %v", err)
+						t.Fatalf("error creating new file [%v]: %v", fname, err)
 					}
-					data := ptr.Elem().Interface()
-					// check data just read in is ok
-					if !reflect.DeepEqual(data, ref) {
-						t.Fatalf("rows.Scan[row=%[4]d]: %[3]s\nexp=%[1]v (%[1]T)\ngot=%[2]v (%[2]T)", ref, data, table.cols[0].Name, count)
+					defer f.Close()
+
+					phdu, err := NewPrimaryHDU(nil)
+					if err != nil {
+						t.Fatalf("error creating new primary hdu [%v]: %v", fname, err)
 					}
-					count++
-				}
-				if count != nrows {
-					t.Fatalf("expected [%v] rows. got [%v]", nrows, count)
-				}
-			},
-		} {
-			fct()
-		}
+					err = f.Write(phdu)
+					if err != nil {
+						t.Fatalf("error writing primary hdu [%v]: %v", fname, err)
+					}
+
+					tbl, err := NewTable("test", table.cols, table.htype)
+					if err != nil {
+						t.Fatalf("error creating new table: %v (%v)", err, table.cols[0].Name)
+					}
+					defer tbl.Close()
+
+					rslice := reflect.ValueOf(table.table)
+					for i := 0; i < rslice.Len(); i++ {
+						data := rslice.Index(i).Addr()
+						err = tbl.Write(data.Interface())
+						if err != nil {
+							t.Fatalf("error writing row [%v]: %v (data=%v %T)", i, err, data.Interface(), data.Interface())
+						}
+					}
+
+					nrows := tbl.NumRows()
+					if nrows != int64(rslice.Len()) {
+						t.Fatalf("expected num rows [%v]. got [%v] (%v)", rslice.Len(), nrows, table.cols[0].Name)
+					}
+
+					err = f.Write(tbl)
+					if err != nil {
+						t.Fatalf("error writing table: %v", err)
+					}
+				},
+				// read
+				func() {
+					r, err := os.Open(fname)
+					if err != nil {
+						t.Fatalf("error opening file [%v]: %v", fname, err)
+					}
+					defer r.Close()
+					f, err := Open(r)
+					if err != nil {
+						b, _ := ioutil.ReadFile(fname)
+						t.Fatalf("error opening file [%v]: %v\n%q", fname, err, string(b))
+					}
+					defer f.Close()
+
+					hdu := f.HDU(1)
+					tbl := hdu.(*Table)
+					if tbl.Name() != "test" {
+						t.Fatalf("expected table name==%q. got %q", "test", tbl.Name())
+					}
+
+					rslice := reflect.ValueOf(table.table)
+					nrows := tbl.NumRows()
+					if nrows != int64(rslice.Len()) {
+						t.Fatalf("expected num rows [%v]. got [%v]", rslice.Len(), nrows)
+					}
+
+					rows, err := tbl.Read(0, nrows)
+					if err != nil {
+						t.Fatalf("table.Read: %v", err)
+					}
+					count := int64(0)
+					for rows.Next() {
+						ref := rslice.Index(int(count)).Interface()
+						rt := reflect.TypeOf(ref)
+						ptr := reflect.New(rt)
+						err = rows.Scan(ptr.Interface())
+						if err != nil {
+							t.Fatalf("rows.Scan: %v", err)
+						}
+						data := ptr.Elem().Interface()
+						// check data just read in is ok
+						if !reflect.DeepEqual(data, ref) {
+							t.Fatalf("rows.Scan[row=%[4]d]: %[3]s\nexp=%[1]v (%[1]T)\ngot=%[2]v (%[2]T)", ref, data, table.cols[0].Name, count)
+						}
+						count++
+					}
+					if count != nrows {
+						t.Fatalf("expected [%v] rows. got [%v]", nrows, count)
+					}
+				},
+			} {
+				fct()
+			}
+		})
 	}
 }
 
@@ -1101,7 +1114,7 @@ func TestTableSliceRW(t *testing.T) {
 	}{
 		// binary table
 		{
-			name: "new.fits",
+			name: "bin-b",
 			cols: []Column{
 				{
 					Name:   "bools",
@@ -1117,7 +1130,7 @@ func TestTableSliceRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-i8",
 			cols: []Column{
 				{
 					Name:   "int8s",
@@ -1132,7 +1145,7 @@ func TestTableSliceRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-i16",
 			cols: []Column{
 				{
 					Name:   "int16s",
@@ -1147,7 +1160,7 @@ func TestTableSliceRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-i32",
 			cols: []Column{
 				{
 					Name:   "int32s",
@@ -1162,7 +1175,7 @@ func TestTableSliceRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-i64",
 			cols: []Column{
 				{
 					Name:   "int64s",
@@ -1177,7 +1190,7 @@ func TestTableSliceRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-ii",
 			cols: []Column{
 				{
 					Name:   "ints",
@@ -1192,7 +1205,7 @@ func TestTableSliceRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-u8",
 			cols: []Column{
 				{
 					Name:   "uint8s",
@@ -1207,7 +1220,7 @@ func TestTableSliceRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-u16",
 			cols: []Column{
 				{
 					Name:   "uint16s",
@@ -1222,7 +1235,7 @@ func TestTableSliceRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-u32",
 			cols: []Column{
 				{
 					Name:   "uint32s",
@@ -1237,7 +1250,7 @@ func TestTableSliceRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-u64",
 			cols: []Column{
 				{
 					Name:   "uint64s",
@@ -1252,7 +1265,7 @@ func TestTableSliceRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-uu",
 			cols: []Column{
 				{
 					Name:   "uints",
@@ -1267,7 +1280,7 @@ func TestTableSliceRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-f32",
 			cols: []Column{
 				{
 					Name:   "float32s",
@@ -1282,7 +1295,7 @@ func TestTableSliceRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-f64",
 			cols: []Column{
 				{
 					Name:   "float64s",
@@ -1297,7 +1310,7 @@ func TestTableSliceRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-c64",
 			cols: []Column{
 				{
 					Name:   "cplx64s",
@@ -1315,7 +1328,7 @@ func TestTableSliceRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-c128",
 			cols: []Column{
 				{
 					Name:   "cplx128s",
@@ -1330,111 +1343,113 @@ func TestTableSliceRW(t *testing.T) {
 			},
 		},
 	} {
-		fname := fmt.Sprintf("%03d_%s", ii, table.name)
-		for _, fct := range []func(){
-			// create
-			func() {
-				w, err := os.Create(fname)
-				if err != nil {
-					t.Fatalf("error creating new file [%v]: %v", fname, err)
-				}
-				defer w.Close()
-
-				f, err := Create(w)
-				if err != nil {
-					t.Fatalf("error creating new file [%v]: %v", fname, err)
-				}
-				defer f.Close()
-
-				phdu, err := NewPrimaryHDU(nil)
-				if err != nil {
-					t.Fatalf("error creating PHDU: %v", err)
-				}
-				defer phdu.Close()
-
-				err = f.Write(phdu)
-				if err != nil {
-					t.Fatalf("error writing PHDU: %v", err)
-				}
-
-				tbl, err := NewTable("test", table.cols, table.htype)
-				if err != nil {
-					t.Fatalf("error creating new table: %v (%v)", err, table.cols[0].Name)
-				}
-				defer tbl.Close()
-
-				rslice := reflect.ValueOf(table.table)
-				for i := 0; i < rslice.Len(); i++ {
-					data := rslice.Index(i).Addr()
-					err = tbl.Write(data.Interface())
+		fname := fmt.Sprintf("%03d_%s.fits", ii, table.name)
+		t.Run(fname, func(t *testing.T) {
+			for _, fct := range []func(){
+				// create
+				func() {
+					w, err := os.Create(fname)
 					if err != nil {
-						t.Fatalf("error writing row [%v]: %v", i, err)
+						t.Fatalf("error creating new file [%v]: %v", fname, err)
 					}
-				}
+					defer w.Close()
 
-				nrows := tbl.NumRows()
-				if nrows != int64(rslice.Len()) {
-					t.Fatalf("expected num rows [%v]. got [%v] (%v)", rslice.Len(), nrows, table.cols[0].Name)
-				}
-
-				err = f.Write(tbl)
-				if err != nil {
-					t.Fatalf("error writing table: %v", err)
-				}
-			},
-			// read
-			func() {
-				r, err := os.Open(fname)
-				if err != nil {
-					t.Fatalf("error opening file [%v]: %v", fname, err)
-				}
-				defer r.Close()
-				f, err := Open(r)
-				if err != nil {
-					b, _ := ioutil.ReadFile(fname)
-					t.Fatalf("error opening file [%v]: %v\n%q", fname, err, string(b))
-				}
-				defer f.Close()
-
-				hdu := f.HDU(1)
-				tbl := hdu.(*Table)
-				if tbl.Name() != "test" {
-					t.Fatalf("expected table name==%q. got %q", "test", tbl.Name())
-				}
-
-				rslice := reflect.ValueOf(table.table)
-				nrows := tbl.NumRows()
-				if nrows != int64(rslice.Len()) {
-					t.Fatalf("expected num rows [%v]. got [%v]", rslice.Len(), nrows)
-				}
-
-				rows, err := tbl.Read(0, nrows)
-				if err != nil {
-					t.Fatalf("table.Read: %v", err)
-				}
-				count := int64(0)
-				for rows.Next() {
-					ref := rslice.Index(int(count)).Interface()
-					rt := reflect.TypeOf(ref)
-					ptr := reflect.New(rt)
-					err = rows.Scan(ptr.Interface())
+					f, err := Create(w)
 					if err != nil {
-						t.Fatalf("rows.Scan: %v", err)
+						t.Fatalf("error creating new file [%v]: %v", fname, err)
 					}
-					data := ptr.Elem().Interface()
-					// check data just read in is ok
-					if !reflect.DeepEqual(data, ref) {
-						t.Fatalf("rows.Scan: [%[3]s|%[4]v]\nexp=%[1]v (%[1]T)\ngot=%[2]v (%[2]T)", ref, data, table.cols[0].Name, table.htype)
+					defer f.Close()
+
+					phdu, err := NewPrimaryHDU(nil)
+					if err != nil {
+						t.Fatalf("error creating PHDU: %v", err)
 					}
-					count++
-				}
-				if count != nrows {
-					t.Fatalf("expected [%v] rows. got [%v]", nrows, count)
-				}
-			},
-		} {
-			fct()
-		}
+					defer phdu.Close()
+
+					err = f.Write(phdu)
+					if err != nil {
+						t.Fatalf("error writing PHDU: %v", err)
+					}
+
+					tbl, err := NewTable("test", table.cols, table.htype)
+					if err != nil {
+						t.Fatalf("error creating new table: %v (%v)", err, table.cols[0].Name)
+					}
+					defer tbl.Close()
+
+					rslice := reflect.ValueOf(table.table)
+					for i := 0; i < rslice.Len(); i++ {
+						data := rslice.Index(i).Addr()
+						err = tbl.Write(data.Interface())
+						if err != nil {
+							t.Fatalf("error writing row [%v]: %v", i, err)
+						}
+					}
+
+					nrows := tbl.NumRows()
+					if nrows != int64(rslice.Len()) {
+						t.Fatalf("expected num rows [%v]. got [%v] (%v)", rslice.Len(), nrows, table.cols[0].Name)
+					}
+
+					err = f.Write(tbl)
+					if err != nil {
+						t.Fatalf("error writing table: %v", err)
+					}
+				},
+				// read
+				func() {
+					r, err := os.Open(fname)
+					if err != nil {
+						t.Fatalf("error opening file [%v]: %v", fname, err)
+					}
+					defer r.Close()
+					f, err := Open(r)
+					if err != nil {
+						b, _ := ioutil.ReadFile(fname)
+						t.Fatalf("error opening file [%v]: %v\n%q", fname, err, string(b))
+					}
+					defer f.Close()
+
+					hdu := f.HDU(1)
+					tbl := hdu.(*Table)
+					if tbl.Name() != "test" {
+						t.Fatalf("expected table name==%q. got %q", "test", tbl.Name())
+					}
+
+					rslice := reflect.ValueOf(table.table)
+					nrows := tbl.NumRows()
+					if nrows != int64(rslice.Len()) {
+						t.Fatalf("expected num rows [%v]. got [%v]", rslice.Len(), nrows)
+					}
+
+					rows, err := tbl.Read(0, nrows)
+					if err != nil {
+						t.Fatalf("table.Read: %v", err)
+					}
+					count := int64(0)
+					for rows.Next() {
+						ref := rslice.Index(int(count)).Interface()
+						rt := reflect.TypeOf(ref)
+						ptr := reflect.New(rt)
+						err = rows.Scan(ptr.Interface())
+						if err != nil {
+							t.Fatalf("rows.Scan: %v", err)
+						}
+						data := ptr.Elem().Interface()
+						// check data just read in is ok
+						if !reflect.DeepEqual(data, ref) {
+							t.Fatalf("rows.Scan: [%[3]s|%[4]v]\nexp=%[1]v (%[1]T)\ngot=%[2]v (%[2]T)", ref, data, table.cols[0].Name, table.htype)
+						}
+						count++
+					}
+					if count != nrows {
+						t.Fatalf("expected [%v] rows. got [%v]", nrows, count)
+					}
+				},
+			} {
+				fct()
+			}
+		})
 	}
 }
 
@@ -1465,7 +1480,7 @@ func TestTableArrayRW(t *testing.T) {
 	}{
 		// binary table
 		{
-			name: "new.fits",
+			name: "bin-b",
 			cols: []Column{
 				{
 					Name:   "bools",
@@ -1481,7 +1496,7 @@ func TestTableArrayRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-i8",
 			cols: []Column{
 				{
 					Name:   "int8s",
@@ -1496,7 +1511,7 @@ func TestTableArrayRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-i16",
 			cols: []Column{
 				{
 					Name:   "int16s",
@@ -1511,7 +1526,7 @@ func TestTableArrayRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-i32",
 			cols: []Column{
 				{
 					Name:   "int32s",
@@ -1526,7 +1541,7 @@ func TestTableArrayRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-i64",
 			cols: []Column{
 				{
 					Name:   "int64s",
@@ -1541,7 +1556,7 @@ func TestTableArrayRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-ii",
 			cols: []Column{
 				{
 					Name:   "ints",
@@ -1556,7 +1571,7 @@ func TestTableArrayRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-u8",
 			cols: []Column{
 				{
 					Name:   "uint8s",
@@ -1571,7 +1586,7 @@ func TestTableArrayRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-u16",
 			cols: []Column{
 				{
 					Name:   "uint16s",
@@ -1586,7 +1601,7 @@ func TestTableArrayRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-u32",
 			cols: []Column{
 				{
 					Name:   "uint32s",
@@ -1601,7 +1616,7 @@ func TestTableArrayRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-u64",
 			cols: []Column{
 				{
 					Name:   "uint64s",
@@ -1616,7 +1631,7 @@ func TestTableArrayRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-uu",
 			cols: []Column{
 				{
 					Name:   "uints",
@@ -1631,7 +1646,7 @@ func TestTableArrayRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-f32",
 			cols: []Column{
 				{
 					Name:   "float32s",
@@ -1646,7 +1661,7 @@ func TestTableArrayRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-f64",
 			cols: []Column{
 				{
 					Name:   "float64s",
@@ -1661,7 +1676,7 @@ func TestTableArrayRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-c64",
 			cols: []Column{
 				{
 					Name:   "cplx64s",
@@ -1679,7 +1694,7 @@ func TestTableArrayRW(t *testing.T) {
 			},
 		},
 		{
-			name: "new.fits",
+			name: "bin-c128",
 			cols: []Column{
 				{
 					Name:   "cplx128s",
@@ -1694,113 +1709,115 @@ func TestTableArrayRW(t *testing.T) {
 			},
 		},
 	} {
-		fname := fmt.Sprintf("%03d_%s", ii, table.name)
-		for _, fct := range []func(){
-			// create
-			func() {
-				w, err := os.Create(fname)
-				if err != nil {
-					t.Fatalf("error creating new file [%v]: %v", fname, err)
-				}
-				defer w.Close()
-
-				f, err := Create(w)
-				if err != nil {
-					t.Fatalf("error creating new file [%v]: %v", fname, err)
-				}
-				defer f.Close()
-
-				phdu, err := NewPrimaryHDU(nil)
-				if err != nil {
-					t.Fatalf("error creating PHDU: %v", err)
-				}
-				defer phdu.Close()
-
-				defer phdu.Close()
-
-				err = f.Write(phdu)
-				if err != nil {
-					t.Fatalf("error writing PHDU: %v", err)
-				}
-
-				tbl, err := NewTable("test", table.cols, table.htype)
-				if err != nil {
-					t.Fatalf("error creating new table: %v (%v)", err, table.cols[0].Name)
-				}
-				defer tbl.Close()
-
-				rslice := reflect.ValueOf(table.table)
-				for i := 0; i < rslice.Len(); i++ {
-					data := rslice.Index(i).Addr()
-					err = tbl.Write(data.Interface())
+		fname := fmt.Sprintf("%03d_%s.fits", ii, table.name)
+		t.Run(fname, func(t *testing.T) {
+			for _, fct := range []func(){
+				// create
+				func() {
+					w, err := os.Create(fname)
 					if err != nil {
-						t.Fatalf("error writing row [%v]: %v", i, err)
+						t.Fatalf("error creating new file [%v]: %v", fname, err)
 					}
-				}
+					defer w.Close()
 
-				nrows := tbl.NumRows()
-				if nrows != int64(rslice.Len()) {
-					t.Fatalf("expected num rows [%v]. got [%v] (%v)", rslice.Len(), nrows, table.cols[0].Name)
-				}
-
-				err = f.Write(tbl)
-				if err != nil {
-					t.Fatalf("error writing table: %v", err)
-				}
-			},
-			// read
-			func() {
-				r, err := os.Open(fname)
-				if err != nil {
-					t.Fatalf("error opening file [%v]: %v", fname, err)
-				}
-				defer r.Close()
-
-				f, err := Open(r)
-				if err != nil {
-					t.Fatalf("error opening file [%v]: %v", fname, err)
-				}
-				defer f.Close()
-
-				hdu := f.HDU(1)
-				tbl := hdu.(*Table)
-				if tbl.Name() != "test" {
-					t.Fatalf("expected table name==%q. got %q", "test", tbl.Name())
-				}
-
-				rslice := reflect.ValueOf(table.table)
-				nrows := tbl.NumRows()
-				if nrows != int64(rslice.Len()) {
-					t.Fatalf("expected num rows [%v]. got [%v]", rslice.Len(), nrows)
-				}
-
-				rows, err := tbl.Read(0, nrows)
-				if err != nil {
-					t.Fatalf("table.Read: %v", err)
-				}
-				count := int64(0)
-				for rows.Next() {
-					ref := rslice.Index(int(count)).Interface()
-					rt := reflect.TypeOf(ref)
-					ptr := reflect.New(rt)
-					err = rows.Scan(ptr.Interface())
+					f, err := Create(w)
 					if err != nil {
-						t.Fatalf("rows.Scan: %v", err)
+						t.Fatalf("error creating new file [%v]: %v", fname, err)
 					}
-					data := ptr.Elem().Interface()
-					// check data just read in is ok
-					if !reflect.DeepEqual(data, ref) {
-						t.Fatalf("rows.Scan: [%[3]s|%[4]v]\nexp=%[1]v (%[1]T)\ngot=%[2]v (%[2]T)", ref, data, table.cols[0].Name, table.htype)
+					defer f.Close()
+
+					phdu, err := NewPrimaryHDU(nil)
+					if err != nil {
+						t.Fatalf("error creating PHDU: %v", err)
 					}
-					count++
-				}
-				if count != nrows {
-					t.Fatalf("expected [%v] rows. got [%v]", nrows, count)
-				}
-			},
-		} {
-			fct()
-		}
+					defer phdu.Close()
+
+					defer phdu.Close()
+
+					err = f.Write(phdu)
+					if err != nil {
+						t.Fatalf("error writing PHDU: %v", err)
+					}
+
+					tbl, err := NewTable("test", table.cols, table.htype)
+					if err != nil {
+						t.Fatalf("error creating new table: %v (%v)", err, table.cols[0].Name)
+					}
+					defer tbl.Close()
+
+					rslice := reflect.ValueOf(table.table)
+					for i := 0; i < rslice.Len(); i++ {
+						data := rslice.Index(i).Addr()
+						err = tbl.Write(data.Interface())
+						if err != nil {
+							t.Fatalf("error writing row [%v]: %v", i, err)
+						}
+					}
+
+					nrows := tbl.NumRows()
+					if nrows != int64(rslice.Len()) {
+						t.Fatalf("expected num rows [%v]. got [%v] (%v)", rslice.Len(), nrows, table.cols[0].Name)
+					}
+
+					err = f.Write(tbl)
+					if err != nil {
+						t.Fatalf("error writing table: %v", err)
+					}
+				},
+				// read
+				func() {
+					r, err := os.Open(fname)
+					if err != nil {
+						t.Fatalf("error opening file [%v]: %v", fname, err)
+					}
+					defer r.Close()
+
+					f, err := Open(r)
+					if err != nil {
+						t.Fatalf("error opening file [%v]: %v", fname, err)
+					}
+					defer f.Close()
+
+					hdu := f.HDU(1)
+					tbl := hdu.(*Table)
+					if tbl.Name() != "test" {
+						t.Fatalf("expected table name==%q. got %q", "test", tbl.Name())
+					}
+
+					rslice := reflect.ValueOf(table.table)
+					nrows := tbl.NumRows()
+					if nrows != int64(rslice.Len()) {
+						t.Fatalf("expected num rows [%v]. got [%v]", rslice.Len(), nrows)
+					}
+
+					rows, err := tbl.Read(0, nrows)
+					if err != nil {
+						t.Fatalf("table.Read: %v", err)
+					}
+					count := int64(0)
+					for rows.Next() {
+						ref := rslice.Index(int(count)).Interface()
+						rt := reflect.TypeOf(ref)
+						ptr := reflect.New(rt)
+						err = rows.Scan(ptr.Interface())
+						if err != nil {
+							t.Fatalf("rows.Scan: %v", err)
+						}
+						data := ptr.Elem().Interface()
+						// check data just read in is ok
+						if !reflect.DeepEqual(data, ref) {
+							t.Fatalf("rows.Scan: [%[3]s|%[4]v]\nexp=%[1]v (%[1]T)\ngot=%[2]v (%[2]T)", ref, data, table.cols[0].Name, table.htype)
+						}
+						count++
+					}
+					if count != nrows {
+						t.Fatalf("expected [%v] rows. got [%v]", nrows, count)
+					}
+				},
+			} {
+				fct()
+			}
+		})
 	}
 }
 
@@ -1875,109 +1892,111 @@ func TestTableStructsRW(t *testing.T) {
 		},
 	} {
 		fname := fmt.Sprintf("%03d_%s", ii, table.name)
-		for _, fct := range []func(){
-			// create
-			func() {
-				w, err := os.Create(fname)
-				if err != nil {
-					t.Fatalf("error creating new file [%v]: %v", fname, err)
-				}
-				defer w.Close()
-
-				f, err := Create(w)
-				if err != nil {
-					t.Fatalf("error creating new file [%v]: %v", fname, err)
-				}
-				defer f.Close()
-
-				phdu, err := NewPrimaryHDU(nil)
-				if err != nil {
-					t.Fatalf("error creating PHDU: %v", err)
-				}
-				defer phdu.Close()
-
-				err = f.Write(phdu)
-				if err != nil {
-					t.Fatalf("error writing PHDU: %v", err)
-				}
-
-				tbl, err := NewTable("test", table.cols, table.htype)
-				if err != nil {
-					t.Fatalf("error creating new table: %v (%v)", err, table.cols[0].Name)
-				}
-				defer tbl.Close()
-
-				rslice := reflect.ValueOf(table.table)
-				for i := 0; i < rslice.Len(); i++ {
-					data := rslice.Index(i).Addr()
-					err = tbl.Write(data.Interface())
+		t.Run(fname, func(t *testing.T) {
+			for _, fct := range []func(){
+				// create
+				func() {
+					w, err := os.Create(fname)
 					if err != nil {
-						t.Fatalf("error writing row [%v]: %v", i, err)
+						t.Fatalf("error creating new file [%v]: %v", fname, err)
 					}
-				}
+					defer w.Close()
 
-				nrows := tbl.NumRows()
-				if nrows != int64(rslice.Len()) {
-					t.Fatalf("expected num rows [%v]. got [%v] (%v)", rslice.Len(), nrows, table.cols[0].Name)
-				}
-
-				err = f.Write(tbl)
-				if err != nil {
-					t.Fatalf("error writing table: %v", err)
-				}
-			},
-			// read
-			func() {
-				r, err := os.Open(fname)
-				if err != nil {
-					t.Fatalf("error opening file [%v]: %v", fname, err)
-				}
-				defer r.Close()
-				f, err := Open(r)
-				if err != nil {
-					t.Fatalf("error opening file [%v]: %v", fname, err)
-				}
-				defer f.Close()
-
-				hdu := f.HDU(1)
-				tbl := hdu.(*Table)
-				if tbl.Name() != "test" {
-					t.Fatalf("expected table name==%q. got %q", "test", tbl.Name())
-				}
-
-				rslice := reflect.ValueOf(table.table)
-				nrows := tbl.NumRows()
-				if nrows != int64(rslice.Len()) {
-					t.Fatalf("expected num rows [%v]. got [%v]", rslice.Len(), nrows)
-				}
-
-				rows, err := tbl.Read(0, nrows)
-				if err != nil {
-					t.Fatalf("table.Read: %v", err)
-				}
-				count := int64(0)
-				for rows.Next() {
-					ref := rslice.Index(int(count)).Interface()
-					rt := reflect.TypeOf(ref)
-					rv := reflect.New(rt).Elem()
-					data := rv.Interface().(DataStruct)
-					err = rows.Scan(&data)
+					f, err := Create(w)
 					if err != nil {
-						t.Fatalf("rows.Scan: %v", err)
+						t.Fatalf("error creating new file [%v]: %v", fname, err)
 					}
-					// check data just read in is ok
-					if !reflect.DeepEqual(data, ref) {
-						t.Fatalf("rows.Scan:\nexpected=%v\ngot=%v (%T)", ref, data, data)
+					defer f.Close()
+
+					phdu, err := NewPrimaryHDU(nil)
+					if err != nil {
+						t.Fatalf("error creating PHDU: %v", err)
 					}
-					count++
-				}
-				if count != nrows {
-					t.Fatalf("expected [%v] rows. got [%v]", nrows, count)
-				}
-			},
-		} {
-			fct()
-		}
+					defer phdu.Close()
+
+					err = f.Write(phdu)
+					if err != nil {
+						t.Fatalf("error writing PHDU: %v", err)
+					}
+
+					tbl, err := NewTable("test", table.cols, table.htype)
+					if err != nil {
+						t.Fatalf("error creating new table: %v (%v)", err, table.cols[0].Name)
+					}
+					defer tbl.Close()
+
+					rslice := reflect.ValueOf(table.table)
+					for i := 0; i < rslice.Len(); i++ {
+						data := rslice.Index(i).Addr()
+						err = tbl.Write(data.Interface())
+						if err != nil {
+							t.Fatalf("error writing row [%v]: %v", i, err)
+						}
+					}
+
+					nrows := tbl.NumRows()
+					if nrows != int64(rslice.Len()) {
+						t.Fatalf("expected num rows [%v]. got [%v] (%v)", rslice.Len(), nrows, table.cols[0].Name)
+					}
+
+					err = f.Write(tbl)
+					if err != nil {
+						t.Fatalf("error writing table: %v", err)
+					}
+				},
+				// read
+				func() {
+					r, err := os.Open(fname)
+					if err != nil {
+						t.Fatalf("error opening file [%v]: %v", fname, err)
+					}
+					defer r.Close()
+					f, err := Open(r)
+					if err != nil {
+						t.Fatalf("error opening file [%v]: %v", fname, err)
+					}
+					defer f.Close()
+
+					hdu := f.HDU(1)
+					tbl := hdu.(*Table)
+					if tbl.Name() != "test" {
+						t.Fatalf("expected table name==%q. got %q", "test", tbl.Name())
+					}
+
+					rslice := reflect.ValueOf(table.table)
+					nrows := tbl.NumRows()
+					if nrows != int64(rslice.Len()) {
+						t.Fatalf("expected num rows [%v]. got [%v]", rslice.Len(), nrows)
+					}
+
+					rows, err := tbl.Read(0, nrows)
+					if err != nil {
+						t.Fatalf("table.Read: %v", err)
+					}
+					count := int64(0)
+					for rows.Next() {
+						ref := rslice.Index(int(count)).Interface()
+						rt := reflect.TypeOf(ref)
+						rv := reflect.New(rt).Elem()
+						data := rv.Interface().(DataStruct)
+						err = rows.Scan(&data)
+						if err != nil {
+							t.Fatalf("rows.Scan: %v", err)
+						}
+						// check data just read in is ok
+						if !reflect.DeepEqual(data, ref) {
+							t.Fatalf("rows.Scan:\nexpected=%v\ngot=%v (%T)", ref, data, data)
+						}
+						count++
+					}
+					if count != nrows {
+						t.Fatalf("expected [%v] rows. got [%v]", nrows, count)
+					}
+				},
+			} {
+				fct()
+			}
+		})
 	}
 }
 
@@ -2064,107 +2083,109 @@ func TestTableMapsRW(t *testing.T) {
 		},
 	} {
 		fname := fmt.Sprintf("%03d_%s", ii, table.name)
-		for _, fct := range []func(){
-			// create
-			func() {
-				w, err := os.Create(fname)
-				if err != nil {
-					t.Fatalf("error creating new file [%v]: %v", fname, err)
-				}
-				defer w.Close()
-
-				f, err := Create(w)
-				if err != nil {
-					t.Fatalf("error creating new file [%v]: %v", fname, err)
-				}
-				defer f.Close()
-
-				phdu, err := NewPrimaryHDU(nil)
-				if err != nil {
-					t.Fatalf("error creating PHDU: %v", err)
-				}
-				defer phdu.Close()
-
-				err = f.Write(phdu)
-				if err != nil {
-					t.Fatalf("error writing PHDU: %v", err)
-				}
-
-				tbl, err := NewTable("test", table.cols, table.htype)
-				if err != nil {
-					t.Fatalf("error creating new table: %v (%v)", err, table.cols[0].Name)
-				}
-				defer tbl.Close()
-
-				rslice := reflect.ValueOf(table.table)
-				for i := 0; i < rslice.Len(); i++ {
-					data := rslice.Index(i).Addr()
-					err = tbl.Write(data.Interface())
+		t.Run(fname, func(t *testing.T) {
+			for _, fct := range []func(){
+				// create
+				func() {
+					w, err := os.Create(fname)
 					if err != nil {
-						t.Fatalf("error writing row [%v]: %v", i, err)
+						t.Fatalf("error creating new file [%v]: %v", fname, err)
 					}
-				}
+					defer w.Close()
 
-				nrows := tbl.NumRows()
-				if nrows != int64(rslice.Len()) {
-					t.Fatalf("expected num rows [%v]. got [%v] (%v)", rslice.Len(), nrows, table.cols[0].Name)
-				}
-
-				err = f.Write(tbl)
-				if err != nil {
-					t.Fatalf("error writing table: %v", err)
-				}
-			},
-			// read
-			func() {
-				r, err := os.Open(fname)
-				if err != nil {
-					t.Fatalf("error opening file [%v]: %v", fname, err)
-				}
-				defer r.Close()
-				f, err := Open(r)
-				if err != nil {
-					t.Fatalf("error opening file [%v]: %v", fname, err)
-				}
-				defer f.Close()
-
-				hdu := f.HDU(1)
-				tbl := hdu.(*Table)
-				if tbl.Name() != "test" {
-					t.Fatalf("expected table name==%q. got %q", "test", tbl.Name())
-				}
-
-				rslice := reflect.ValueOf(table.table)
-				nrows := tbl.NumRows()
-				if nrows != int64(rslice.Len()) {
-					t.Fatalf("expected num rows [%v]. got [%v]", rslice.Len(), nrows)
-				}
-
-				rows, err := tbl.Read(0, nrows)
-				if err != nil {
-					t.Fatalf("table.Read: %v", err)
-				}
-				count := int64(0)
-				for rows.Next() {
-					ref := rslice.Index(int(count)).Interface().(map[string]interface{})
-					data := map[string]interface{}{}
-					err = rows.Scan(&data)
+					f, err := Create(w)
 					if err != nil {
-						t.Fatalf("rows.Scan: %v", err)
+						t.Fatalf("error creating new file [%v]: %v", fname, err)
 					}
-					// check data just read in is ok
-					if !reflect.DeepEqual(data, ref) {
-						t.Fatalf("rows.Scan:\nexp=%[1]v (%[1]T)\ngot=%[2]v (%[2]T)", ref, data)
+					defer f.Close()
+
+					phdu, err := NewPrimaryHDU(nil)
+					if err != nil {
+						t.Fatalf("error creating PHDU: %v", err)
 					}
-					count++
-				}
-				if count != nrows {
-					t.Fatalf("expected [%v] rows. got [%v]", nrows, count)
-				}
-			},
-		} {
-			fct()
-		}
+					defer phdu.Close()
+
+					err = f.Write(phdu)
+					if err != nil {
+						t.Fatalf("error writing PHDU: %v", err)
+					}
+
+					tbl, err := NewTable("test", table.cols, table.htype)
+					if err != nil {
+						t.Fatalf("error creating new table: %v (%v)", err, table.cols[0].Name)
+					}
+					defer tbl.Close()
+
+					rslice := reflect.ValueOf(table.table)
+					for i := 0; i < rslice.Len(); i++ {
+						data := rslice.Index(i).Addr()
+						err = tbl.Write(data.Interface())
+						if err != nil {
+							t.Fatalf("error writing row [%v]: %v", i, err)
+						}
+					}
+
+					nrows := tbl.NumRows()
+					if nrows != int64(rslice.Len()) {
+						t.Fatalf("expected num rows [%v]. got [%v] (%v)", rslice.Len(), nrows, table.cols[0].Name)
+					}
+
+					err = f.Write(tbl)
+					if err != nil {
+						t.Fatalf("error writing table: %v", err)
+					}
+				},
+				// read
+				func() {
+					r, err := os.Open(fname)
+					if err != nil {
+						t.Fatalf("error opening file [%v]: %v", fname, err)
+					}
+					defer r.Close()
+					f, err := Open(r)
+					if err != nil {
+						t.Fatalf("error opening file [%v]: %v", fname, err)
+					}
+					defer f.Close()
+
+					hdu := f.HDU(1)
+					tbl := hdu.(*Table)
+					if tbl.Name() != "test" {
+						t.Fatalf("expected table name==%q. got %q", "test", tbl.Name())
+					}
+
+					rslice := reflect.ValueOf(table.table)
+					nrows := tbl.NumRows()
+					if nrows != int64(rslice.Len()) {
+						t.Fatalf("expected num rows [%v]. got [%v]", rslice.Len(), nrows)
+					}
+
+					rows, err := tbl.Read(0, nrows)
+					if err != nil {
+						t.Fatalf("table.Read: %v", err)
+					}
+					count := int64(0)
+					for rows.Next() {
+						ref := rslice.Index(int(count)).Interface().(map[string]interface{})
+						data := map[string]interface{}{}
+						err = rows.Scan(&data)
+						if err != nil {
+							t.Fatalf("rows.Scan: %v", err)
+						}
+						// check data just read in is ok
+						if !reflect.DeepEqual(data, ref) {
+							t.Fatalf("rows.Scan:\nexp=%[1]v (%[1]T)\ngot=%[2]v (%[2]T)", ref, data)
+						}
+						count++
+					}
+					if count != nrows {
+						t.Fatalf("expected [%v] rows. got [%v]", nrows, count)
+					}
+				},
+			} {
+				fct()
+			}
+		})
 	}
 }
 
