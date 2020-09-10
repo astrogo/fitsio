@@ -37,7 +37,7 @@ func TestImageRW(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 
-	for ii, table := range []struct {
+	for ii, tc := range []struct {
 		name    string
 		version int
 		cards   []Card
@@ -46,7 +46,7 @@ func TestImageRW(t *testing.T) {
 		image   interface{}
 	}{
 		{
-			name:    "new.fits",
+			name:    "i8",
 			version: 2,
 			cards: []Card{
 				{
@@ -69,7 +69,7 @@ func TestImageRW(t *testing.T) {
 			},
 		},
 		{
-			name:    "new.fits",
+			name:    "i16",
 			version: 2,
 			cards: []Card{
 				{
@@ -92,7 +92,7 @@ func TestImageRW(t *testing.T) {
 			},
 		},
 		{
-			name:    "new.fits",
+			name:    "i32",
 			version: 2,
 			cards: []Card{
 				{
@@ -115,7 +115,7 @@ func TestImageRW(t *testing.T) {
 			},
 		},
 		{
-			name:    "new.fits",
+			name:    "i64",
 			version: 2,
 			cards: []Card{
 				{
@@ -138,7 +138,99 @@ func TestImageRW(t *testing.T) {
 			},
 		},
 		{
-			name:    "new.fits",
+			name:    "u8",
+			version: 2,
+			cards: []Card{
+				{
+					"EXTNAME",
+					"primary hdu",
+					"the primary HDU",
+				},
+				{
+					"EXTVER",
+					2,
+					"the primary hdu version",
+				},
+			},
+			bitpix: 8,
+			axes:   []int{3, 4},
+			image: []uint8{
+				0, 1, 2, 3,
+				4, 5, 6, 7,
+				8, 9, 0, 1,
+			},
+		},
+		{
+			name:    "u16",
+			version: 2,
+			cards: []Card{
+				{
+					"EXTNAME",
+					"primary hdu",
+					"the primary HDU",
+				},
+				{
+					"EXTVER",
+					2,
+					"the primary hdu version",
+				},
+			},
+			bitpix: 16,
+			axes:   []int{3, 4},
+			image: []uint16{
+				0, 1, 2, 3,
+				4, 5, 6, 7,
+				8, 9, 0, 1,
+			},
+		},
+		{
+			name:    "u32",
+			version: 2,
+			cards: []Card{
+				{
+					"EXTNAME",
+					"primary hdu",
+					"the primary HDU",
+				},
+				{
+					"EXTVER",
+					2,
+					"the primary hdu version",
+				},
+			},
+			bitpix: 32,
+			axes:   []int{3, 4},
+			image: []uint32{
+				0, 1, 2, 3,
+				4, 5, 6, 7,
+				8, 9, 0, 1,
+			},
+		},
+		{
+			name:    "u64",
+			version: 2,
+			cards: []Card{
+				{
+					"EXTNAME",
+					"primary hdu",
+					"the primary HDU",
+				},
+				{
+					"EXTVER",
+					2,
+					"the primary hdu version",
+				},
+			},
+			bitpix: 64,
+			axes:   []int{3, 4},
+			image: []uint64{
+				0, 1, 2, 3,
+				4, 5, 6, 7,
+				8, 9, 0, 1,
+			},
+		},
+		{
+			name:    "f32",
 			version: 2,
 			cards: []Card{
 				{
@@ -161,7 +253,7 @@ func TestImageRW(t *testing.T) {
 			},
 		},
 		{
-			name:    "new.fits",
+			name:    "f64",
 			version: 2,
 			cards: []Card{
 				{
@@ -183,240 +275,162 @@ func TestImageRW(t *testing.T) {
 				8, 9, 0, 1,
 			},
 		},
-		{
-			name:    "new.fits",
-			version: 2,
-			cards: []Card{
-				{
-					"EXTNAME",
-					"primary hdu",
-					"the primary HDU",
-				},
-				{
-					"EXTVER",
-					2,
-					"the primary hdu version",
-				},
-				{
-					Name: "BZERO", Value: 32768,
-				},
-				{
-					Name: "BSCALE", Value: 1., // f64, not int
-				},
-			},
-			bitpix: 16,
-			axes:   []int{3, 4},
-			image: []uint16{
-				0, 1, 2, 3,
-				4, 5, 6, 7,
-				8, 9, 0, 1,
-			},
-		},
 	} {
-		fname := fmt.Sprintf("%03d_%s", ii, table.name)
-		for i := 0; i < 2; i++ {
-			func(i int) {
-				var f *File
-				var w *os.File
-				var r *os.File
-				var err error
-				var hdu HDU
+		fname := fmt.Sprintf("%03d_%s.fits", ii, tc.name)
+		t.Run(fname, func(t *testing.T) {
+			for i := 0; i < 2; i++ {
+				func(i int) {
+					var (
+						f   *File
+						w   *os.File
+						r   *os.File
+						err error
+						hdu HDU
+					)
 
-				switch i {
+					switch i {
 
-				case 0: // create
-					//fmt.Printf("========= create [%s]....\n", fname)
-					w, err = os.Create(fname)
-					if err != nil {
-						t.Fatalf("error creating new file [%v]: %v", fname, err)
-					}
-					defer w.Close()
+					case 0: // create
+						//fmt.Printf("========= create [%s]....\n", fname)
+						w, err = os.Create(fname)
+						if err != nil {
+							t.Fatalf("error creating new file [%v]: %v", fname, err)
+						}
+						defer w.Close()
 
-					f, err = Create(w)
-					if err != nil {
-						t.Fatalf("error creating new file [%v]: %v", fname, err)
-					}
-					defer f.Close()
+						f, err = Create(w)
+						if err != nil {
+							t.Fatalf("error creating new file [%v]: %v", fname, err)
+						}
+						defer f.Close()
 
-					img := NewImage(table.bitpix, table.axes)
-					defer img.Close()
+						img := NewImage(tc.bitpix, tc.axes)
+						defer img.Close()
 
-					err = img.Header().Append(table.cards...)
-					if err != nil {
-						t.Fatalf("error appending cards: %v", err)
-					}
-					hdu = img
+						err = img.Header().Append(tc.cards...)
+						if err != nil {
+							t.Fatalf("error appending cards: %v", err)
+						}
+						hdu = img
 
-					err = img.Write(&table.image)
-					if err != nil {
-						t.Fatalf("error writing image: %v", err)
-					}
+						err = img.Write(&tc.image)
+						if err != nil {
+							t.Fatalf("error writing image: %v", err)
+						}
 
-					err = f.Write(img)
-					if err != nil {
-						t.Fatalf("error writing image: %v", err)
-					}
+						err = f.Write(img)
+						if err != nil {
+							t.Fatalf("error writing image: %v", err)
+						}
 
-				case 1: // read
-					//fmt.Printf("========= read [%s]....\n", fname)
-					r, err = os.Open(fname)
-					if err != nil {
-						t.Fatalf("error opening file [%v]: %v", fname, err)
-					}
-					defer r.Close()
-					f, err = Open(r)
-					if err != nil {
-						t.Fatalf("error opening file [%v]: %v", fname, err)
-					}
-					defer f.Close()
+					case 1: // read
+						//fmt.Printf("========= read [%s]....\n", fname)
+						r, err = os.Open(fname)
+						if err != nil {
+							t.Fatalf("error opening file [%v]: %v", fname, err)
+						}
+						defer r.Close()
+						f, err = Open(r)
+						if err != nil {
+							t.Fatalf("error opening file [%v]: %v", fname, err)
+						}
+						defer f.Close()
 
-					hdu = f.HDU(0)
-					hdr := hdu.Header()
-					img := hdu.(Image)
-					nelmts := 1
-					for _, axe := range hdr.Axes() {
-						nelmts *= int(axe)
-					}
+						hdu = f.HDU(0)
+						hdr := hdu.Header()
+						img := hdu.(Image)
+						nelmts := 1
+						for _, axe := range hdr.Axes() {
+							nelmts *= int(axe)
+						}
 
-					var data interface{}
-					switch hdr.Bitpix() {
-					case 8:
-						v := make([]int8, 0, nelmts)
-						err = img.Read(&v)
-						data = v
+						data := reflect.New(reflect.TypeOf(tc.image)).Elem()
+						data.Set(reflect.MakeSlice(data.Type(), 0, nelmts))
+						err = img.Read(data.Addr().Interface())
+						if err != nil {
+							t.Fatalf("error reading image: %v", err)
+						}
 
-					case 16:
-						v := make([]int16, 0, nelmts)
-						err = img.Read(&v)
-						data = v
-
-					case 32:
-						v := make([]int32, 0, nelmts)
-						err = img.Read(&v)
-						data = v
-
-					case 64:
-						v := make([]int64, 0, nelmts)
-						err = img.Read(&v)
-						data = v
-
-					case -32:
-						v := make([]float32, 0, nelmts)
-						err = img.Read(&v)
-						data = v
-
-					case -64:
-						v := make([]float64, 0, nelmts)
-						err = img.Read(&v)
-						data = v
-					}
-
-					if err != nil {
-						t.Fatalf("error reading image: %v", err)
-					}
-
-					if !reflect.DeepEqual(data, table.image) {
-						/* uints and ints mixed fails deepequal with equal data
-
-						This is kind of spaghetti, but this is a complicated
-						test suite to change to support either i16 or uint16
-						for bitpix==16
-
-						--- FAIL: TestImageRW (0.00s)
-						image_test.go:313: expected image:
-							ref=[0 1 2 3 4 5 6 7 8 9 0 1]
-							got=[0 1 2 3 4 5 6 7 8 9 0 1]
-						*/
-						if i16s, ok := data.([]int16); ok {
-							// data is int16 that does not under or overflow
-							// therefore, elementwise convert to i16 for compare
-							d2 := make([]uint16, len(i16s))
-							for i := range i16s {
-								d2[i] = uint16(i16s[i])
-							}
-							if !reflect.DeepEqual(d2, table.image) {
-								t.Fatalf("expected image:\nref=%v\ngot=%v", table.image, data)
-							}
-						} else {
-							t.Fatalf("expected image:\nref=%v\ngot=%v", table.image, data)
+						if got, want := data.Interface(), tc.image; !reflect.DeepEqual(got, want) {
+							t.Fatalf("expected image:\ngot= %#v\nwant=%#v", got, want)
 						}
 					}
-				}
 
-				hdr := hdu.Header()
-				if hdr.bitpix != table.bitpix {
-					t.Fatalf("expected BITPIX=%v. got %v", table.bitpix, hdr.bitpix)
-				}
+					hdr := hdu.Header()
+					if hdr.bitpix != tc.bitpix {
+						t.Fatalf("expected BITPIX=%v. got %v", tc.bitpix, hdr.bitpix)
+					}
 
-				if !reflect.DeepEqual(hdr.Axes(), table.axes) {
-					t.Fatalf("expected AXES==%v. got %v (i=%v)", table.axes, hdr.Axes(), i)
-				}
+					if !reflect.DeepEqual(hdr.Axes(), tc.axes) {
+						t.Fatalf("expected AXES==%v. got %v (i=%v)", tc.axes, hdr.Axes(), i)
+					}
 
-				name := hdu.Name()
-				if name != "primary hdu" {
-					t.Fatalf("expected EXTNAME==%q. got %q", "primary hdu", name)
-				}
+					name := hdu.Name()
+					if name != "primary hdu" {
+						t.Fatalf("expected EXTNAME==%q. got %q", "primary hdu", name)
+					}
 
-				vers := hdu.Version()
-				if vers != table.version {
-					t.Fatalf("expected EXTVER==%v. got %v", table.version, vers)
-				}
+					vers := hdu.Version()
+					if vers != tc.version {
+						t.Fatalf("expected EXTVER==%v. got %v", tc.version, vers)
+					}
 
-				card := hdr.Get("EXTNAME")
-				if card == nil {
-					t.Fatalf("error retrieving card [EXTNAME]")
-				}
-				if card.Comment != "the primary HDU" {
-					t.Fatalf("expected EXTNAME.Comment==%q. got %q", "the primary HDU", card.Comment)
-				}
-
-				card = hdr.Get("EXTVER")
-				if card == nil {
-					t.Fatalf("error retrieving card [EXTVER]")
-				}
-				if card.Comment != "the primary hdu version" {
-					t.Fatalf("expected EXTVER.Comment==%q. got %q", "the primary hdu version", card.Comment)
-
-				}
-
-				for _, ref := range table.cards {
-					card := hdr.Get(ref.Name)
+					card := hdr.Get("EXTNAME")
 					if card == nil {
-						t.Fatalf("error retrieving card [%v]", ref.Name)
+						t.Fatalf("error retrieving card [EXTNAME]")
 					}
-					rv := reflect.ValueOf(ref.Value)
-					var val interface{}
-					switch rv.Type().Kind() {
-					case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-						val = int(rv.Int())
-					case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-						val = int(rv.Uint())
-					case reflect.Float32, reflect.Float64:
-						val = rv.Float()
-					case reflect.Complex64, reflect.Complex128:
-						val = rv.Complex()
-					case reflect.String:
-						val = ref.Value.(string)
+					if card.Comment != "the primary HDU" {
+						t.Fatalf("expected EXTNAME.Comment==%q. got %q", "the primary HDU", card.Comment)
 					}
-					if !reflect.DeepEqual(card.Value, val) {
-						t.Fatalf(
-							"card %q. expected [%v](%T). got [%v](%T)",
-							ref.Name,
-							val, val,
-							card.Value, card.Value,
-						)
-					}
-					if card.Comment != ref.Comment {
-						t.Fatalf("card %q. comment differ. expected %q. got %q", ref.Name, ref.Comment, card.Comment)
-					}
-				}
 
-				card = hdr.Get("NOT THERE")
-				if card != nil {
-					t.Fatalf("expected no card. got [%v]", card)
-				}
-			}(i)
-		}
+					card = hdr.Get("EXTVER")
+					if card == nil {
+						t.Fatalf("error retrieving card [EXTVER]")
+					}
+					if card.Comment != "the primary hdu version" {
+						t.Fatalf("expected EXTVER.Comment==%q. got %q", "the primary hdu version", card.Comment)
+
+					}
+
+					for _, ref := range tc.cards {
+						card := hdr.Get(ref.Name)
+						if card == nil {
+							t.Fatalf("error retrieving card [%v]", ref.Name)
+						}
+						rv := reflect.ValueOf(ref.Value)
+						var val interface{}
+						switch rv.Type().Kind() {
+						case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+							val = int(rv.Int())
+						case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+							val = int(rv.Uint())
+						case reflect.Float32, reflect.Float64:
+							val = rv.Float()
+						case reflect.Complex64, reflect.Complex128:
+							val = rv.Complex()
+						case reflect.String:
+							val = ref.Value.(string)
+						}
+						if !reflect.DeepEqual(card.Value, val) {
+							t.Fatalf(
+								"card %q. expected [%v](%T). got [%v](%T)",
+								ref.Name,
+								val, val,
+								card.Value, card.Value,
+							)
+						}
+						if card.Comment != ref.Comment {
+							t.Fatalf("card %q. comment differ. expected %q. got %q", ref.Name, ref.Comment, card.Comment)
+						}
+					}
+
+					card = hdr.Get("NOT THERE")
+					if card != nil {
+						t.Fatalf("expected no card. got [%v]", card)
+					}
+				}(i)
+			}
+		})
 	}
 }
 
@@ -430,7 +444,7 @@ func TestImageCubeRoundTrip(t *testing.T) {
 	var b bytes.Buffer
 	fits, err := Create(&b)
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("could not create FITS file: %+v", err)
 	}
 	im := NewImage(16, strides)
 	cards := []Card{
@@ -438,23 +452,34 @@ func TestImageCubeRoundTrip(t *testing.T) {
 		{Name: "BSCALE", Value: 1.},
 	}
 	im.Header().Append(cards...)
+
 	err = im.Write(data)
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("could not write data to image HDU: %+v", err)
 	}
+
 	err = fits.Write(im)
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("could not write image to FITS file: %+v", err)
 	}
-	im.Close()
-	fits.Close()
+
+	err = im.Close()
+	if err != nil {
+		t.Fatalf("could not close image HDU: %+v", err)
+	}
+
+	err = fits.Close()
+	if err != nil {
+		t.Fatalf("could not close FITS file: %+v", err)
+	}
 
 	// now read back
 	fits, err = Open(&b)
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("could not open FITS file: %+v", err)
 	}
 	defer fits.Close()
+
 	hdu0 := fits.HDU(0)
 	// we are not testing anything but NAXIS<N> and the data here
 	img := hdu0.(Image)
@@ -471,8 +496,8 @@ func TestImageCubeRoundTrip(t *testing.T) {
 			t.Errorf("pixel %d value of %d did not match expectation %d", i, readback[i], data[i])
 		}
 	}
-
 }
+
 func TestImageImage(t *testing.T) {
 	const (
 		w = 20
@@ -542,85 +567,79 @@ func TestImageImage(t *testing.T) {
 			bitpix: -64,
 		},
 	} {
-		hdu := NewImage(test.bitpix, []int{w, h})
-		switch test.bitpix {
-		case 8:
-			img := test.want.(*image.Gray)
-			err := hdu.Write(&img.Pix)
-			if err != nil {
-				t.Errorf("image #%d: error writing raw pixels: %v\n", i, err)
-				continue
+		t.Run(fmt.Sprintf("bitpix=%d", test.bitpix), func(t *testing.T) {
+			hdu := NewImage(test.bitpix, []int{w, h})
+			switch test.bitpix {
+			case 8:
+				img := test.want.(*image.Gray)
+				err := hdu.Write(&img.Pix)
+				if err != nil {
+					t.Fatalf("image #%d: error writing raw pixels: %v\n", i, err)
+				}
+			case 16:
+				img := test.want.(*image.Gray16)
+				pix := make([]int16, len(img.Pix)/2)
+				for i := 0; i < len(img.Pix); i += 2 {
+					buf := img.Pix[i : i+2]
+					pix[i/2] = int16(uint16(buf[1]) | uint16(buf[0])<<8)
+				}
+				err := hdu.Write(&pix)
+				if err != nil {
+					t.Fatalf("image #%d: error writing raw pixels: %v\n", i, err)
+				}
+			case 32:
+				img := test.want.(*image.RGBA)
+				pix := make([]int32, len(img.Pix)/4)
+				for i := 0; i < len(img.Pix); i += 4 {
+					buf := img.Pix[i : i+4]
+					pix[i/4] = int32(uint32(buf[3]) | uint32(buf[2])<<8 | uint32(buf[1])<<16 | uint32(buf[0])<<24)
+				}
+				err := hdu.Write(&pix)
+				if err != nil {
+					t.Fatalf("image #%d: error writing raw pixels: %v\n", i, err)
+				}
+			case 64:
+				img := test.want.(*image.RGBA64)
+				pix := make([]int64, len(img.Pix)/8)
+				for i := 0; i < len(img.Pix); i += 8 {
+					buf := img.Pix[i : i+8]
+					pix[i/8] = int64(uint64(buf[7]) | uint64(buf[6])<<8 | uint64(buf[5])<<16 | uint64(buf[4])<<24 |
+						uint64(buf[3])<<32 | uint64(buf[2])<<40 | uint64(buf[1])<<48 | uint64(buf[0])<<56)
+				}
+				err := hdu.Write(&pix)
+				if err != nil {
+					t.Fatalf("image #%d: error writing raw pixels: %v\n", i, err)
+				}
+			case -32:
+				img := test.want.(*fltimg.Gray32)
+				pix := make([]float32, len(img.Pix)/4)
+				for i := 0; i < len(img.Pix); i += 4 {
+					buf := img.Pix[i : i+4]
+					pix[i/4] = math.Float32frombits(uint32(buf[3]) | uint32(buf[2])<<8 | uint32(buf[1])<<16 | uint32(buf[0])<<24)
+				}
+				err := hdu.Write(&pix)
+				if err != nil {
+					t.Fatalf("image #%d: error writing raw pixels: %v\n", i, err)
+				}
+			case -64:
+				img := test.want.(*fltimg.Gray64)
+				pix := make([]float64, len(img.Pix)/8)
+				for i := 0; i < len(img.Pix); i += 8 {
+					buf := img.Pix[i : i+8]
+					pix[i/8] = math.Float64frombits(uint64(buf[7]) | uint64(buf[6])<<8 | uint64(buf[5])<<16 | uint64(buf[4])<<24 |
+						uint64(buf[3])<<32 | uint64(buf[2])<<40 | uint64(buf[1])<<48 | uint64(buf[0])<<56)
+				}
+				err := hdu.Write(&pix)
+				if err != nil {
+					t.Fatalf("image #%d: error writing raw pixels: %v\n", i, err)
+				}
+			default:
+				t.Fatalf("image #%d: invalid bitpix=%d", i, test.bitpix)
 			}
-		case 16:
-			img := test.want.(*image.Gray16)
-			pix := make([]int16, len(img.Pix)/2)
-			for i := 0; i < len(img.Pix); i += 2 {
-				buf := img.Pix[i : i+2]
-				pix[i/2] = int16(uint16(buf[1]) | uint16(buf[0])<<8)
+			if !reflect.DeepEqual(hdu.Image(), test.want) {
+				t.Fatalf("image #%d:\n got: %v\nwant: %v\n", i, hdu.Image(), test.want)
 			}
-			err := hdu.Write(&pix)
-			if err != nil {
-				t.Errorf("image #%d: error writing raw pixels: %v\n", i, err)
-				continue
-			}
-		case 32:
-			img := test.want.(*image.RGBA)
-			pix := make([]int32, len(img.Pix)/4)
-			for i := 0; i < len(img.Pix); i += 4 {
-				buf := img.Pix[i : i+4]
-				pix[i/4] = int32(uint32(buf[3]) | uint32(buf[2])<<8 | uint32(buf[1])<<16 | uint32(buf[0])<<24)
-			}
-			err := hdu.Write(&pix)
-			if err != nil {
-				t.Errorf("image #%d: error writing raw pixels: %v\n", i, err)
-				continue
-			}
-		case 64:
-			img := test.want.(*image.RGBA64)
-			pix := make([]int64, len(img.Pix)/8)
-			for i := 0; i < len(img.Pix); i += 8 {
-				buf := img.Pix[i : i+8]
-				pix[i/8] = int64(uint64(buf[7]) | uint64(buf[6])<<8 | uint64(buf[5])<<16 | uint64(buf[4])<<24 |
-					uint64(buf[3])<<32 | uint64(buf[2])<<40 | uint64(buf[1])<<48 | uint64(buf[0])<<56)
-			}
-			err := hdu.Write(&pix)
-			if err != nil {
-				t.Errorf("image #%d: error writing raw pixels: %v\n", i, err)
-				continue
-			}
-		case -32:
-			img := test.want.(*fltimg.Gray32)
-			pix := make([]float32, len(img.Pix)/4)
-			for i := 0; i < len(img.Pix); i += 4 {
-				buf := img.Pix[i : i+4]
-				pix[i/4] = math.Float32frombits(uint32(buf[3]) | uint32(buf[2])<<8 | uint32(buf[1])<<16 | uint32(buf[0])<<24)
-			}
-			err := hdu.Write(&pix)
-			if err != nil {
-				t.Errorf("image #%d: error writing raw pixels: %v\n", i, err)
-				continue
-			}
-		case -64:
-			img := test.want.(*fltimg.Gray64)
-			pix := make([]float64, len(img.Pix)/8)
-			for i := 0; i < len(img.Pix); i += 8 {
-				buf := img.Pix[i : i+8]
-				pix[i/8] = math.Float64frombits(uint64(buf[7]) | uint64(buf[6])<<8 | uint64(buf[5])<<16 | uint64(buf[4])<<24 |
-					uint64(buf[3])<<32 | uint64(buf[2])<<40 | uint64(buf[1])<<48 | uint64(buf[0])<<56)
-			}
-			err := hdu.Write(&pix)
-			if err != nil {
-				t.Errorf("image #%d: error writing raw pixels: %v\n", i, err)
-				continue
-			}
-		default:
-			t.Errorf("image #%d: invalid bitpix=%d", i, test.bitpix)
-			continue
-		}
-		if !reflect.DeepEqual(hdu.Image(), test.want) {
-			t.Errorf("image #%d:\n got: %v\nwant: %v\n", i, hdu.Image(), test.want)
-			continue
-		}
+		})
 	}
 
 	for i, test := range []struct {
@@ -661,24 +680,29 @@ func TestImageImage(t *testing.T) {
 			axes:   []int{0, 0},
 		},
 	} {
-		hdu := NewImage(test.bitpix, test.axes)
-		img := hdu.Image()
-		if img != test.want {
-			t.Errorf("image #%d:\n got: %v\nwant: %v\n", i, img, test.want)
-			continue
-		}
+		t.Run(fmt.Sprintf("bitpix=%d-axes=%d", test.bitpix, test.axes), func(t *testing.T) {
+			hdu := NewImage(test.bitpix, test.axes)
+			img := hdu.Image()
+			if img != test.want {
+				t.Fatalf("image #%d:\n got: %v\nwant: %v\n", i, img, test.want)
+			}
+		})
 	}
 
-	func() {
+	t.Run("invalid-axes", func(t *testing.T) {
 		defer func() {
-			if e := recover(); e == nil {
-				t.Errorf("error: expected a BITPIX-related panic")
+			e := recover()
+			if e == nil {
+				t.Fatalf("error: expected a BITPIX-related panic")
+			}
+			if got, want := e.(error).Error(), "fitsio: image with unknown BITPIX value of 0"; got != want {
+				t.Fatalf("invalid panic error:\ngot= %s\nwant=%s", got, want)
 			}
 		}()
 
 		hdu := NewImage(0, []int{1, 1})
 		_ = hdu.Image()
-	}()
+	})
 }
 
 func BenchmarkImageReadI8_10(b *testing.B)     { benchImageRead(b, 8, 10) }
@@ -973,9 +997,12 @@ func benchImageWrite(b *testing.B, bitpix int, n int) {
 
 func TestPanicWhenNAXISTooLarge(t *testing.T) {
 	defer func() {
-		r := recover()
-		if r == nil {
-			t.Error("expected panic on too many axes")
+		e := recover()
+		if e == nil {
+			t.Fatalf("expected a panic on too many axes")
+		}
+		if got, want := e.(error).Error(), "fitsio: too many axes (got=1000 > 999)"; got != want {
+			t.Fatalf("invalid panic error\ngot= %s\nwant=%s", got, want)
 		}
 	}()
 	ax := make([]int, 1000)

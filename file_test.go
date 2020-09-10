@@ -235,7 +235,4 @@ func TestCreateFile(t *testing.T) {
 	if len(f.HDUs()) != 0 {
 		t.Fatalf("#hdus. expected %v. got %v", 0, len(f.HDUs()))
 	}
-
 }
-
-// EOF

@@ -326,7 +326,7 @@ func (img *imageHDU) Write(data interface{}) error {
 			w.writeI32(v)
 		}
 	case []uint32:
-		if hdr.Bitpix() != 16 {
+		if hdr.Bitpix() != 32 {
 			return fmt.Errorf("fitsio: got a %T but bitpix!=%d", data, hdr.Bitpix())
 		}
 		for _, v := range data {
@@ -341,7 +341,7 @@ func (img *imageHDU) Write(data interface{}) error {
 			w.writeI64(v)
 		}
 	case []uint64:
-		if hdr.Bitpix() != 16 {
+		if hdr.Bitpix() != 64 {
 			return fmt.Errorf("fitsio: got a %T but bitpix!=%d", data, hdr.Bitpix())
 		}
 		for _, v := range data {
