@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"strconv"
 )
 
 // Header describes a Header-Data Unit of a FITS file
@@ -37,6 +38,10 @@ func newHeader(cards []Card, htype HDUType, bitpix int, axes []int) *Header {
 
 // NewHeader creates a new Header from a set of Cards, HDU Type, bitpix and axes.
 func NewHeader(cards []Card, htype HDUType, bitpix int, axes []int) *Header {
+	// short circuit: too many axes violates the FITS standard
+	if len(axes) > 999 {
+		panic(fmt.Errorf("fitsio: too many axes (got=%d > 999)", len(axes)))
+	}
 	hdr := newHeader(cards, htype, bitpix, axes)
 
 	// add (some) mandatory cards (BITPIX, NAXES, AXIS1, AXIS2)
@@ -62,25 +67,17 @@ func NewHeader(cards []Card, htype HDUType, bitpix int, axes []int) *Header {
 			Value:   len(hdr.Axes()),
 			Comment: "number of data axes",
 		})
-	}
-
-	if len(hdr.Axes()) >= 1 {
-		if _, ok := keys["NAXIS1"]; !ok {
-			dcards = append(dcards, Card{
-				Name:    "NAXIS1",
-				Value:   hdr.Axes()[0],
-				Comment: "length of data axis 1",
-			})
-		}
-	}
-
-	if len(hdr.Axes()) >= 2 {
-		if _, ok := keys["NAXIS2"]; !ok {
-			dcards = append(dcards, Card{
-				Name:    "NAXIS2",
-				Value:   hdr.Axes()[1],
-				Comment: "length of data axis 2",
-			})
+		nax := len(hdr.Axes())
+		for i := 0; i < nax; i++ {
+			axis := strconv.Itoa(i + 1) // index from 0, hdu starts at NAXIS1
+			key := "NAXIS" + axis
+			if _, ok := keys[key]; !ok {
+				dcards = append(dcards, Card{
+					Name:    key,
+					Value:   hdr.Axes()[i],
+					Comment: "length of data axis " + axis,
+				})
+			}
 		}
 	}
 

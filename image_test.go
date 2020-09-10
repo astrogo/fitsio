@@ -5,6 +5,7 @@
 package fitsio
 
 import (
+	"bytes"
 	"fmt"
 	"image"
 	"image/color"
@@ -182,6 +183,35 @@ func TestImageRW(t *testing.T) {
 				8, 9, 0, 1,
 			},
 		},
+		{
+			name:    "new.fits",
+			version: 2,
+			cards: []Card{
+				{
+					"EXTNAME",
+					"primary hdu",
+					"the primary HDU",
+				},
+				{
+					"EXTVER",
+					2,
+					"the primary hdu version",
+				},
+				{
+					Name: "BZERO", Value: 32768,
+				},
+				{
+					Name: "BSCALE", Value: 1., // f64, not int
+				},
+			},
+			bitpix: 16,
+			axes:   []int{3, 4},
+			image: []uint16{
+				0, 1, 2, 3,
+				4, 5, 6, 7,
+				8, 9, 0, 1,
+			},
+		},
 	} {
 		fname := fmt.Sprintf("%03d_%s", ii, table.name)
 		for i := 0; i < 2; i++ {
@@ -286,7 +316,30 @@ func TestImageRW(t *testing.T) {
 					}
 
 					if !reflect.DeepEqual(data, table.image) {
-						t.Fatalf("expected image:\nref=%v\ngot=%v", table.image, data)
+						/* uints and ints mixed fails deepequal with equal data
+
+						This is kind of spaghetti, but this is a complicated
+						test suite to change to support either i16 or uint16
+						for bitpix==16
+
+						--- FAIL: TestImageRW (0.00s)
+						image_test.go:313: expected image:
+							ref=[0 1 2 3 4 5 6 7 8 9 0 1]
+							got=[0 1 2 3 4 5 6 7 8 9 0 1]
+						*/
+						if i16s, ok := data.([]int16); ok {
+							// data is int16 that does not under or overflow
+							// therefore, elementwise convert to i16 for compare
+							d2 := make([]uint16, len(i16s))
+							for i := range i16s {
+								d2[i] = uint16(i16s[i])
+							}
+							if !reflect.DeepEqual(d2, table.image) {
+								t.Fatalf("expected image:\nref=%v\ngot=%v", table.image, data)
+							}
+						} else {
+							t.Fatalf("expected image:\nref=%v\ngot=%v", table.image, data)
+						}
 					}
 				}
 
@@ -367,6 +420,59 @@ func TestImageRW(t *testing.T) {
 	}
 }
 
+func TestImageCubeRoundTrip(t *testing.T) {
+	strides := []int{2, 3, 6} // non repetitive, aperiodic strides
+
+	data := make([]int16, 2*3*6)
+	for i := 0; i < len(data); i++ {
+		data[i] = int16(i - 32768)
+	}
+	var b bytes.Buffer
+	fits, err := Create(&b)
+	if err != nil {
+		t.Error(err)
+	}
+	im := NewImage(16, strides)
+	cards := []Card{
+		{Name: "BZERO", Value: 32768},
+		{Name: "BSCALE", Value: 1.},
+	}
+	im.Header().Append(cards...)
+	err = im.Write(data)
+	if err != nil {
+		t.Error(err)
+	}
+	err = fits.Write(im)
+	if err != nil {
+		t.Error(err)
+	}
+	im.Close()
+	fits.Close()
+
+	// now read back
+	fits, err = Open(&b)
+	if err != nil {
+		t.Error(err)
+	}
+	defer fits.Close()
+	hdu0 := fits.HDU(0)
+	// we are not testing anything but NAXIS<N> and the data here
+	img := hdu0.(Image)
+	ax := hdu0.Header().Axes()
+	for i := range ax {
+		if ax[i] != strides[i] {
+			t.Errorf("NAXIS %d value of %d did not match expectation of %d", i, ax[i], strides[i])
+		}
+	}
+	readback := make([]int16, len(data))
+	err = img.Read(&readback)
+	for i := 0; i < len(data); i++ {
+		if data[i] != readback[i] {
+			t.Errorf("pixel %d value of %d did not match expectation %d", i, readback[i], data[i])
+		}
+	}
+
+}
 func TestImageImage(t *testing.T) {
 	const (
 		w = 20
@@ -839,17 +945,17 @@ func benchImageWrite(b *testing.B, bitpix int, n int) {
 		panic(fmt.Errorf("invalid bitpix=%d", bitpix))
 	}
 
-	img := NewImage(bitpix, axes)
-	defer img.Close()
-
 	b.ReportAllocs()
 	b.ResetTimer()
 
+	var img *imageHDU
 	for i := 0; i < b.N; i++ {
+		img = NewImage(bitpix, axes)
 		err = img.Write(ptr)
 		if err != nil {
 			b.Fatal(err)
 		}
+		img.Close()
 	}
 
 	err = f.Write(img)
@@ -863,4 +969,15 @@ func benchImageWrite(b *testing.B, bitpix int, n int) {
 	}
 
 	return
+}
+
+func TestPanicWhenNAXISTooLarge(t *testing.T) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Error("expected panic on too many axes")
+		}
+	}()
+	ax := make([]int, 1000)
+	_ = NewImage(32, ax)
 }
