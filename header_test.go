@@ -581,6 +581,24 @@ func TestMakeHeaderLine(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			line: []byte("FLOAT64 =   1.1234567891234568 / small float value                              "),
+			card: &Card{
+				Name:    "FLOAT64",
+				Value:   float64(1.123456789123456789123456789),
+				Comment: "small float value",
+			},
+			err: nil,
+		},
+		{
+			line: []byte("FLOAT64 = 9.223372036854776e+18 / large float value                             "),
+			card: &Card{
+				Name:    "FLOAT64",
+				Value:   float64(9223372036854775807.123456789123456789123456789),
+				Comment: "large float value",
+			},
+			err: nil,
+		},
 	} {
 		line, err := makeHeaderLine(table.card)
 		if !reflect.DeepEqual(err, table.err) {
