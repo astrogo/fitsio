@@ -423,7 +423,7 @@ func makeHeaderLine(card *Card) ([]byte, error) {
 			}
 
 		case float64:
-			n, err = fmt.Fprintf(buf, "%#20g", v)
+			n, err = fmt.Fprintf(buf, "%#20G", v)
 			if err != nil {
 				return nil, fmt.Errorf("fitsio: error writing card value [%s]: %v", card.Name, err)
 			}

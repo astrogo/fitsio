@@ -7,6 +7,7 @@ package fitsio
 import (
 	"fmt"
 	"io/ioutil"
+	"math"
 	"math/big"
 	"os"
 	"reflect"
@@ -591,11 +592,38 @@ func TestMakeHeaderLine(t *testing.T) {
 			err: nil,
 		},
 		{
-			line: []byte("FLOAT64 = 9.223372036854776e+18 / large float value                             "),
+			line: []byte("FLOAT64 = 9.223372036854776E+18 / large float value                             "),
 			card: &Card{
 				Name:    "FLOAT64",
 				Value:   float64(9223372036854775807.123456789123456789123456789),
 				Comment: "large float value",
+			},
+			err: nil,
+		},
+		{
+			line: []byte("HIERARCH DIVFLOAT64=   0.6666666666666666 / infinit                             "),
+			card: &Card{
+				Name:    "DIVFLOAT64",
+				Value:   float64(2.0 / 3.0),
+				Comment: "infinit",
+			},
+			err: nil,
+		},
+		{
+			line: []byte("HIERARCH MAXFLOAT64= 1.7976931348623157E+308 / MaxFloat64                       "),
+			card: &Card{
+				Name:    "MAXFLOAT64",
+				Value:   math.MaxFloat64,
+				Comment: "MaxFloat64",
+			},
+			err: nil,
+		},
+		{
+			line: []byte("HIERARCH SMALLESTNONZEROFLOAT=         5.00000E-324 / SmallestNonzeroFloat64    "),
+			card: &Card{
+				Name:    "SMALLESTNONZEROFLOAT",
+				Value:   math.SmallestNonzeroFloat64,
+				Comment: "SmallestNonzeroFloat64",
 			},
 			err: nil,
 		},
