@@ -1,7 +1,8 @@
 fitsio
 ======
 
-[![Build Status](https://travis-ci.org/astrogo/fitsio.svg?branch=master)](https://travis-ci.org/astrogo/fitsio)
+[![GitHub release](https://img.shields.io/github/release/astrogo/fitsio.svg)](https://github.com/astrogo/fitsio/releases)
+[![CI](https://github.com/astrogo/fitsio/workflows/CI/badge.svg)](https://github.com/astrogo/fitsio/actions)
 [![codecov](https://codecov.io/gh/astrogo/fitsio/branch/master/graph/badge.svg)](https://codecov.io/gh/astrogo/fitsio)
 [![GoDoc](https://godoc.org/github.com/astrogo/fitsio?status.svg)](https://godoc.org/github.com/astrogo/fitsio)
 
@@ -15,7 +16,7 @@ $ go get github.com/astrogo/fitsio
 
 ## Documentation
 
-http://godoc.org/github.com/astrogo/fitsio
+https://godoc.org/github.com/astrogo/fitsio
 
 ## Contribute
 
