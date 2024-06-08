@@ -412,12 +412,10 @@ func (t *Table) writeMap(data map[string]interface{}) error {
 
 	for _, icol := range icols {
 		col := t.Col(icol)
-		val := reflect.New(col.Type())
-		err = col.write(t, icol, t.nrows, val.Interface())
+		err = col.write(t, icol, t.nrows, data[col.Name])
 		if err != nil {
 			return err
 		}
-		data[col.Name] = val.Elem().Interface()
 	}
 	return err
 }
