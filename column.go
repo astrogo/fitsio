@@ -417,12 +417,15 @@ func (col *Column) writeBin(table *Table, icol int, irow int64, ptr interface{})
 		}
 
 	case reflect.Array:
+		rvPtr := reflect.New(rv.Type()).Elem()
+		rvPtr.Set(rv)
 
 		beg := table.rowsz*int(irow) + col.offset
 		end := beg + (col.dtype.dsize * col.dtype.len)
 
 		w := newWriter(table.data[beg:end])
-		switch slice := rv.Slice(0, rv.Len()).Interface().(type) {
+
+		switch slice := rvPtr.Slice(0, rv.Len()).Interface().(type) {
 		case []bool:
 			w.writeBools(slice)
 
